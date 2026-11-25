@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import shutil
 import time
 import uuid
@@ -193,7 +194,8 @@ def create_app() -> FastAPI:
 
             stats.elapsed_seconds = round(time.perf_counter() - t0, 2)
             stats.slides_kept = sum(1 for s in slides if s.kept)
-            if cfg.cleanup_video and video_path.exists():
+            auto_cleanup = cfg.cleanup_video or os.environ.get("LECTURELENS_AUTO_CLEANUP") == "1"
+            if auto_cleanup and video_path.exists():
                 try:
                     video_path.unlink()
                 except OSError:

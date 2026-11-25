@@ -55,12 +55,18 @@ flowchart LR
 
 ---
 
-## Quick Start
+## Quick Start (Run on Your Own Laptop)
+
+> **Zero manual model downloads required:** Core slide detection runs on pure computer vision (`FFmpeg` + `OpenCV`), and the offline OCR model (`RapidOCR`, ~12 MB) installs automatically with `pip`. You do **not** need an LLM or API key to use LectureLens.
 
 ### Prerequisites
 - **Python 3.11+**
-- **FFmpeg** (`brew install ffmpeg` on macOS, `sudo apt install ffmpeg` on Ubuntu/Debian)
-- **Node.js 20+** *(optional — only needed if modifying the React frontend; pre-built static UI is included or built via Vite, and Node also accelerates `yt-dlp` YouTube extraction)*
+- **FFmpeg**
+  - macOS: `brew install ffmpeg`
+  - Ubuntu/Debian: `sudo apt install ffmpeg`
+  - Windows: `winget install Gyan.FFmpeg`
+- **Node.js 20+** *(optional — helps `yt-dlp` with YouTube streams; pre-built frontend UI is already included in `backend/lecturelens/static/`)*
+- **Ollama** *(optional — only if you want offline AI vision filtering or bullet summaries via `ollama pull gemma3:4b`)*
 
 ### 1. Clone & Install
 
@@ -69,13 +75,13 @@ git clone https://github.com/manthansonarkar/LectureLens.git
 cd LectureLens
 
 python3 -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
+source .venv/bin/activate   # Windows PowerShell: .venv\Scripts\Activate.ps1
 pip install --upgrade pip
 pip install -r requirements.txt
 pip install --no-deps -e .
 ```
 
-*(If modifying the frontend UI: `cd frontend && npm install && npm run build && cd ..`)*
+*(If modifying the React frontend: `cd frontend && npm install && npm run build && cd ..`)*
 
 ### 2. Launch the Web Studio
 
@@ -83,7 +89,7 @@ pip install --no-deps -e .
 lecturelens serve --open
 ```
 
-Open **[http://127.0.0.1:8000](http://127.0.0.1:8000)**, paste any YouTube lecture URL (or drop a local `.mp4`/`.mkv`), pick a mode (**Smart Lecture Notes** or **Max 20–30% Similarity**), inspect/search slides, and export your **PDF** or **DOCX**!
+Open **[http://127.0.0.1:8000](http://127.0.0.1:8000)**, paste any YouTube lecture URL (or drop a local `.mp4`/`.mkv`), pick a mode (**Smart Lecture Notes** or **Max 20–30% Similarity**), inspect/search slides, and export your **PDF** or **DOCX**! *(Tip: turn on **Auto-Delete Video Cache** or pass `--cleanup` to automatically remove downloaded video files after export.)*
 
 ---
 
@@ -106,6 +112,16 @@ lecturelens extract "https://www.youtube.com/watch?v=VIDEO_ID" \
 # Local recorded lecture with optional local Ollama AI summary
 lecturelens extract ./recorded_lecture.mp4 --ai ollama --ai-model gemma3:4b
 ```
+
+---
+
+## Deploy as a Public Website (Render / Hugging Face Spaces / Railway)
+
+Instead of making visitors open a Colab notebook, you can host the full **LectureLens Web Studio** as a live public website using the included [`Dockerfile`](Dockerfile) and [`render.yaml`](render.yaml):
+
+- **Render:** Connect `manthansonarkar/LectureLens` on [render.com](https://render.com) as a **Blueprint** (`render.yaml`) or **Docker Web Service** — `LECTURELENS_AUTO_CLEANUP=1` automatically deletes temporary video streams after export.
+- **Hugging Face Spaces (Free Docker Space):** Create a new **Docker** Space, push/sync this repository, and set `app_port: 8000` in the Space README frontmatter.
+- *(Note: Cloud datacenter IPs on Render/AWS/Spaces can occasionally hit YouTube anti-bot checks on some videos; uploading local `.mp4`/`.mkv` lectures always works, and running locally on a user's laptop works reliably across YouTube lectures.)*
 
 ---
 

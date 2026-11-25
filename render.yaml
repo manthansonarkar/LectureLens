@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: lecturelens
+    runtime: docker
+    plan: starter
+    autoDeploy: true
+    envVars:
+      - key: LECTURELENS_AUTO_CLEANUP
+        value: "1"
