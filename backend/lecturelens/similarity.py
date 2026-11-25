@@ -24,6 +24,7 @@ class FrameSignature:
     sharpness: float
     content_density: float
     edge_energy: float
+    smooth_frac: float = 1.0
 
 
 @dataclass
@@ -138,6 +139,7 @@ def compute_signature(
     gx = cv2.Sobel(gray_smooth, cv2.CV_32F, 1, 0, ksize=3)
     gy = cv2.Sobel(gray_smooth, cv2.CV_32F, 0, 1, ksize=3)
     edge_mag = np.sqrt(gx * gx + gy * gy)
+    smooth_pixels = (np.abs(gx) + np.abs(gy)) <= 24.0
 
     fg_mask = fg_diff > 16.0
 
@@ -147,11 +149,13 @@ def compute_signature(
         active_area = float(eval_mask.sum()) + 1e-6
         masked_gray = np.where(eval_mask, gray_f, 128.0)
         masked_edge = np.where(eval_mask, edge_mag, 0.0)
+        smooth_frac = float(smooth_pixels[eval_mask].mean())
     else:
         active_fg = fg_mask
         active_area = float(h * w)
         masked_gray = gray_f
         masked_edge = edge_mag
+        smooth_frac = float(smooth_pixels.mean())
 
     content_density = float(active_fg.sum()) / active_area
     edge_energy = float(masked_edge.sum()) / active_area
@@ -184,6 +188,7 @@ def compute_signature(
         sharpness=sharpness,
         content_density=content_density,
         edge_energy=edge_energy,
+        smooth_frac=smooth_frac,
     )
 
 
@@ -222,60 +227,77 @@ def detect_active_crop(
     return (sx, sy, sw, sh)
 
 
-def detect_webcam_mask(
-    grays: list[np.ndarray],
-    grid_cols: int = 8,
-    grid_rows: int = 6,
+def grid_tile_diff_matrix(
+    gray_a: np.ndarray,
+    gray_b: np.ndarray,
+    rows: int = 12,
+    cols: int = 16,
+) -> np.ndarray:
+    """Compute per-tile mean absolute difference across a rows x cols spatial grid."""
+    h, w = gray_a.shape
+    ch = max(1, h // rows)
+    cw = max(1, w // cols)
+    diff = np.abs(gray_a - gray_b)
+    tile_means = np.zeros((rows, cols), dtype=np.float32)
+    for r in range(rows):
+        r0 = r * ch
+        r1 = h if r == rows - 1 else (r + 1) * ch
+        for c in range(cols):
+            c0 = c * cw
+            c1 = w if c == cols - 1 else (c + 1) * cw
+            tile_means[r, c] = float(diff[r0:r1, c0:c1].mean())
+    return tile_means
+
+
+def cluster_webcam_mask(
+    flicker_counts: np.ndarray,
+    pair_count: int,
+    height: int,
+    width: int,
+    min_pairs: int = 6,
 ) -> tuple[np.ndarray | None, list[float] | None]:
-    """Identify persistent corner/edge PiP speaker overlay via tile temporal variance on static frames."""
-    if len(grays) < 8:
+    """Cluster localized perimeter/near-perimeter high-motion tiles into a PiP webcam mask."""
+    if pair_count < min_pairs:
         return None, None
 
-    h, w = grays[0].shape
-    cell_h = max(1, h // grid_rows)
-    cell_w = max(1, w // grid_cols)
+    grid_rows, grid_cols = flicker_counts.shape
+    cell_h = max(1, height // grid_rows)
+    cell_w = max(1, width // grid_cols)
 
-    flicker_counts = np.zeros((grid_rows, grid_cols), dtype=np.int32)
-    static_pairs = 0
-
-    for i in range(1, len(grays)):
-        diff = np.abs(grays[i] - grays[i - 1])
-        tile_means = np.zeros((grid_rows, grid_cols), dtype=np.float32)
-        for r in range(grid_rows):
-            r0 = r * cell_h
-            r1 = h if r == grid_rows - 1 else (r + 1) * cell_h
-            for c in range(grid_cols):
-                c0 = c * cell_w
-                c1 = w if c == grid_cols - 1 else (c + 1) * cell_w
-                tile_means[r, c] = float(diff[r0:r1, c0:c1].mean())
-
-        if float(np.median(tile_means)) < 1.8:
-            static_pairs += 1
-            flicker_counts += (tile_means > 4.5).astype(np.int32)
-
-    if static_pairs < 6:
+    rates = flicker_counts / float(pair_count)
+    hot_seed = rates >= 0.25
+    if not np.any(hot_seed):
         return None, None
 
-    rates = flicker_counts / float(static_pairs)
-    hot = rates >= 0.30
-    if not np.any(hot):
-        return None, None
+    # Hysteresis grow to include soft border/hair tiles (>= 0.14) touching core motion tiles
+    hot = hot_seed.copy()
+    k3 = np.ones((3, 3), dtype=np.uint8)
+    for _ in range(2):
+        adj = cv2.dilate(hot.astype(np.uint8), k3) > 0
+        new_hot = hot | (adj & (rates >= 0.14))
+        if np.array_equal(new_hot, hot):
+            break
+        hot = new_hot
 
+    # Allow inset floating PiP cards situated within outer 2 tiles (12-16% border band) on 16x12 grids
+    margin_r = max(1, grid_rows // 6)
+    margin_c = max(1, grid_cols // 8)
     perimeter_mask = np.zeros((grid_rows, grid_cols), dtype=bool)
-    perimeter_mask[0, :] = True
-    perimeter_mask[-1, :] = True
-    perimeter_mask[:, 0] = True
-    perimeter_mask[:, -1] = True
+    perimeter_mask[:margin_r, :] = True
+    perimeter_mask[-margin_r:, :] = True
+    perimeter_mask[:, :margin_c] = True
+    perimeter_mask[:, -margin_c:] = True
 
     num_labels, labels, _, _ = cv2.connectedComponentsWithStats(hot.astype(np.uint8), connectivity=8)
     best_cluster: np.ndarray | None = None
     best_area = 0
-    max_allowed_tiles = int(0.28 * grid_rows * grid_cols)
+    min_tiles = 2 if (grid_rows * grid_cols) >= 128 else 1
+    max_allowed_tiles = int(0.36 * grid_rows * grid_cols)
 
     for lbl in range(1, num_labels):
         comp = labels == lbl
         area = int(comp.sum())
-        if 1 <= area <= max_allowed_tiles and np.any(comp & perimeter_mask):
+        if min_tiles <= area <= max_allowed_tiles and np.any(comp & perimeter_mask) and np.any(comp & hot_seed):
             if area > best_area:
                 best_area = area
                 best_cluster = comp
@@ -288,14 +310,63 @@ def detect_webcam_mask(
     c_min, c_max = int(xs.min()), int(xs.max())
 
     y1 = max(0, r_min * cell_h)
-    y2 = min(h, h if r_max == grid_rows - 1 else (r_max + 1) * cell_h)
+    y2 = min(height, height if r_max == grid_rows - 1 else (r_max + 1) * cell_h)
     x1 = max(0, c_min * cell_w)
-    x2 = min(w, w if c_max == grid_cols - 1 else (c_max + 1) * cell_w)
+    x2 = min(width, width if c_max == grid_cols - 1 else (c_max + 1) * cell_w)
 
-    pixel_mask = np.zeros((h, w), dtype=bool)
+    # Expand inward edges slightly (~3.2%) so static rounded card frames around PiP never leak into eval_mask
+    pad_x = max(2, int(round(0.032 * width)))
+    pad_y = max(2, int(round(0.035 * height)))
+    x1 = max(0, x1 - pad_x) if c_min > 0 else 0
+    x2 = min(width, x2 + pad_x) if c_max < grid_cols - 1 else width
+    y1 = max(0, y1 - pad_y) if r_min > 0 else 0
+    y2 = min(height, y2 + pad_y) if r_max < grid_rows - 1 else height
+
+    pixel_mask = np.zeros((height, width), dtype=bool)
     pixel_mask[y1:y2, x1:x2] = True
-    norm_box = [round(x1 / w, 4), round(y1 / h, 4), round(x2 / w, 4), round(y2 / h, 4)]
+    norm_box = [round(x1 / width, 4), round(y1 / height, 4), round(x2 / width, 4), round(y2 / height, 4)]
     return pixel_mask, norm_box
+
+
+def detect_webcam_mask(
+    grays: list[np.ndarray],
+    grid_cols: int = 16,
+    grid_rows: int = 12,
+) -> tuple[np.ndarray | None, list[float] | None]:
+    """Identify persistent corner/edge PiP speaker overlay via tile temporal variance on slide-like frames."""
+    if len(grays) < 8:
+        return None, None
+
+    h, w = grays[0].shape
+    slide_flicker = np.zeros((grid_rows, grid_cols), dtype=np.int32)
+    slide_pairs = 0
+    all_flicker = np.zeros((grid_rows, grid_cols), dtype=np.int32)
+    all_pairs = 0
+
+    def _is_slide_smooth(g: np.ndarray) -> bool:
+        gx = cv2.Sobel(g, cv2.CV_32F, 1, 0, ksize=3)
+        gy = cv2.Sobel(g, cv2.CV_32F, 0, 1, ksize=3)
+        return float(((np.abs(gx) + np.abs(gy)) <= 24.0).mean()) >= 0.50
+
+    prev_smooth = _is_slide_smooth(grays[0])
+    for i in range(1, len(grays)):
+        cur_smooth = _is_slide_smooth(grays[i])
+        tile_means = grid_tile_diff_matrix(grays[i - 1], grays[i], rows=grid_rows, cols=grid_cols)
+        med = float(np.median(tile_means))
+        hot_tiles = (tile_means > 3.5).astype(np.int32)
+        if med < 1.8:
+            all_pairs += 1
+            all_flicker += hot_tiles
+            if prev_smooth and cur_smooth and med < 1.6:
+                slide_pairs += 1
+                slide_flicker += hot_tiles
+        prev_smooth = cur_smooth
+
+    if slide_pairs >= 6:
+        mask, box = cluster_webcam_mask(slide_flicker, slide_pairs, h, w)
+        if mask is not None:
+            return mask, box
+    return cluster_webcam_mask(all_flicker, all_pairs, h, w)
 
 
 def compute_template_mask(signatures: list[FrameSignature]) -> np.ndarray | None:
@@ -456,6 +527,61 @@ def _template_tile_mask(template_mask: np.ndarray | None, rows: int = 9, cols: i
             out[idx] = float(template_mask[r0:r1, c0:c1].mean()) > 0.03
             idx += 1
     return out
+
+
+def check_scaled_additive_containment(
+    sig_a: FrameSignature,
+    sig_b: FrameSignature,
+    valid_mask: np.ndarray | None = None,
+) -> tuple[float, float]:
+    """Detect whether active content of `sig_a` is contained inside `sig_b` after canvas zoom-out/pan."""
+    h, w = sig_a.gray.shape
+    mask = valid_mask if (valid_mask is not None and valid_mask.shape == (h, w)) else np.ones((h, w), dtype=bool)
+    fg_a = sig_a.fg_mask & mask
+    fg_b = sig_b.fg_mask & mask
+    ys, xs = np.where(fg_a)
+    if len(xs) < 40:
+        return 0.0, 0.0
+
+    x1 = max(0, int(xs.min()) - 2)
+    x2 = min(w, int(xs.max()) + 3)
+    y1 = max(0, int(ys.min()) - 2)
+    y2 = min(h, int(ys.max()) + 3)
+    bw, bh = x2 - x1, y2 - y1
+    if bw < 8 or bh < 8 or (bw >= int(0.88 * w) and bh >= int(0.88 * h)):
+        return 0.0, 0.0
+
+    patch_g = sig_a.gray[y1:y2, x1:x2]
+    patch_fg = fg_a[y1:y2, x1:x2].astype(np.uint8)
+    bg_fill = float(np.median(sig_b.gray[mask])) if np.any(mask) else 128.0
+    b_g = np.where(mask, sig_b.gray, bg_fill).astype(np.float32)
+
+    k3 = np.ones((3, 3), dtype=np.uint8)
+    b_dil = cv2.dilate(fg_b.astype(np.uint8), k3) > 0
+
+    best_cc = 0.0
+    best_ret = 0.0
+    for sc in (0.55, 0.62, 0.70, 0.75, 0.82, 0.90, 1.0):
+        tw = max(8, int(round(bw * sc)))
+        th = max(8, int(round(bh * sc)))
+        if tw >= w - 2 or th >= h - 2:
+            continue
+        tg = cv2.resize(patch_g, (tw, th), interpolation=cv2.INTER_AREA).astype(np.float32)
+        if float(np.std(tg)) < 3.0:
+            continue
+        res = cv2.matchTemplate(b_g, tg, cv2.TM_CCOEFF_NORMED)
+        _, max_v, _, (lx, ly) = cv2.minMaxLoc(res)
+        if max_v > best_cc:
+            tfg = cv2.resize(patch_fg, (tw, th), interpolation=cv2.INTER_NEAREST) > 0
+            denom = float(tfg.sum())
+            if denom > 10.0:
+                bg_win = b_g[ly : ly + th, lx : lx + tw]
+                ret = float((tfg & b_dil[ly : ly + th, lx : lx + tw] & (np.abs(bg_win - tg) < 30.0)).sum()) / denom
+            else:
+                ret = 0.0
+            best_cc = float(max_v)
+            best_ret = float(ret)
+    return best_cc, best_ret
 
 
 def compare_frames(

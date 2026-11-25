@@ -64,6 +64,20 @@ def test_pdf_all_layouts(tmp_path: Path) -> None:
         assert len(raw) > 5000
 
 
+def test_pdf_study_full_packs_slides_cleanly_without_orphan_ocr(tmp_path: Path) -> None:
+    meta, slides = _sample_data(tmp_path)
+    out = tmp_path / "compact_ocr_only.pdf"
+    req = ExportRequest(pdf_layout=PdfLayout.STUDY_FULL, include_ocr=True, include_transcript=False)
+    export_pdf(out, meta, slides, req)
+    assert out.exists()
+    raw = out.read_bytes()
+    assert raw.startswith(b"%PDF-")
+    # 4 slides without transcripts should fit compactly across <= 3 pages (2 slides + OCR boxes per page)
+    page_count = raw.count(b"/Type /Page\n") + raw.count(b"/Type /Page\r") + raw.count(b"/Type /Page ")
+    if page_count:
+        assert page_count <= 3
+
+
 def test_docx_export_valid_and_contains_images_and_text(tmp_path: Path) -> None:
     meta, slides = _sample_data(tmp_path)
     out = tmp_path / "notes.docx"

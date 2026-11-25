@@ -25,11 +25,13 @@ from .models import (
 from .similarity import (
     FrameSignature,
     build_eval_mask,
+    check_scaled_additive_containment,
+    cluster_webcam_mask,
     compare_frames,
     compute_signature,
     compute_template_mask,
     detect_active_crop,
-    detect_webcam_mask,
+    grid_tile_diff_matrix,
 )
 from .utils import build_youtube_jump_url, find_ffmpeg, format_timestamp, probe_video
 
@@ -44,6 +46,7 @@ class CandidateFrame:
     end_time: float
     signature: FrameSignature
     preview_rgb: np.ndarray | None = None
+    intra_motion: float = 0.0
 
 
 @dataclass
@@ -106,14 +109,15 @@ def _grid_tile_diffs(gray_a: np.ndarray, gray_b: np.ndarray, rows: int = 6, cols
     return float(np.percentile(arr, 75)), float(arr.max())
 
 
-def _quick_sharpness_and_density(gray: np.ndarray) -> tuple[float, float]:
-    """Lightweight quality score inside a stable window."""
+def _quick_frame_metrics(gray: np.ndarray) -> tuple[float, float, float]:
+    """Lightweight sharpness, edge density, and flat-background smoothness inside a window."""
     lap = cv2.Laplacian(gray, cv2.CV_32F)
     sharp = float(np.var(lap))
     gx = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3)
     gy = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3)
     density = float(np.mean((gx * gx + gy * gy) > 500.0))
-    return sharp, density
+    smooth_frac = float(np.mean((np.abs(gx) + np.abs(gy)) <= 24.0))
+    return sharp, density, smooth_frac
 
 
 def _chapter_for_time(chapters: list[Chapter], ts: float) -> str | None:
@@ -165,23 +169,40 @@ def scan_video(
     sample_stride_for_masks = max(1, expected_frames // 140)
 
     mask_rgb_samples: list[np.ndarray] = []
-    mask_gray_samples: list[np.ndarray] = []
+
+    grid_rows, grid_cols = 12, 16
+    slide_flicker = np.zeros((grid_rows, grid_cols), dtype=np.int32)
+    slide_pairs = 0
+    all_flicker = np.zeros((grid_rows, grid_cols), dtype=np.int32)
+    all_pairs = 0
 
     # Stability window tracking (O(1) steady memory for intermediate frames)
     transition_p75_thresh = 2.6
     checkpoint_max_tile_thresh = 3.8
     min_window_frames = 2 if sample_fps >= 1.2 else 1
 
-    # Pending checkpoints extracted as raw RGB frames (only ~50-400 per hour!)
-    raw_checkpoints: list[tuple[float, float, float, np.ndarray]] = []
+    # Pending checkpoints: (best_ts, win_start_t, win_end_t, best_rgb, mean_tile_motion_12x16)
+    raw_checkpoints: list[tuple[float, float, float, np.ndarray, np.ndarray]] = []
 
     prev_gray: np.ndarray | None = None
+    prev_smooth = 1.0
     win_start_t = 0.0
     win_frames = 0
     best_win_score = -1.0
     best_win_t = 0.0
     best_win_rgb: np.ndarray | None = None
     checkpoint_ref_gray: np.ndarray | None = None
+    win_tm_sum = np.zeros((grid_rows, grid_cols), dtype=np.float32)
+    win_tm_count = 0
+    plateau_tm_sum = np.zeros((grid_rows, grid_cols), dtype=np.float32)
+    plateau_tm_count = 0
+
+    def _window_motion_avg() -> np.ndarray:
+        if win_tm_count > 0:
+            return win_tm_sum / float(win_tm_count)
+        if plateau_tm_count > 0:
+            return plateau_tm_sum / float(plateau_tm_count)
+        return np.zeros((grid_rows, grid_cols), dtype=np.float32)
 
     idx = 0
     while True:
@@ -194,9 +215,8 @@ def scan_video(
 
         if idx % sample_stride_for_masks == 0:
             mask_rgb_samples.append(rgb)
-            mask_gray_samples.append(gray)
 
-        sharp, density = _quick_sharpness_and_density(gray)
+        sharp, density, smooth_frac = _quick_frame_metrics(gray)
         quality_score = sharp * (0.4 + 2.5 * min(0.35, density))
 
         if prev_gray is None:
@@ -206,21 +226,41 @@ def scan_video(
             best_win_t = ts
             best_win_rgb = rgb
             checkpoint_ref_gray = gray
+            win_tm_sum.fill(0.0)
+            win_tm_count = 0
+            plateau_tm_sum.fill(0.0)
+            plateau_tm_count = 0
         else:
-            p75_diff, _ = _grid_tile_diffs(prev_gray, gray)
+            tm_prev = grid_tile_diff_matrix(prev_gray, gray, rows=grid_rows, cols=grid_cols)
+            med_diff = float(np.median(tm_prev))
+            hot_tiles = (tm_prev > 3.5).astype(np.int32)
+            if med_diff < 1.8:
+                all_pairs += 1
+                all_flicker += hot_tiles
+                if med_diff < 1.6 and prev_smooth >= 0.55 and smooth_frac >= 0.55:
+                    slide_pairs += 1
+                    slide_flicker += hot_tiles
+
+            p75_diff = float(np.percentile(tm_prev, 75))
             if p75_diff > transition_p75_thresh:
-                # Close previous stable segment if valid
                 if win_frames >= min_window_frames and best_win_rgb is not None:
-                    raw_checkpoints.append((best_win_t, win_start_t, ts, best_win_rgb))
-                # Start new candidate segment
+                    raw_checkpoints.append((best_win_t, win_start_t, ts, best_win_rgb, _window_motion_avg()))
                 win_start_t = ts
                 win_frames = 1
                 best_win_score = quality_score
                 best_win_t = ts
                 best_win_rgb = rgb
                 checkpoint_ref_gray = gray
+                win_tm_sum.fill(0.0)
+                win_tm_count = 0
+                plateau_tm_sum.fill(0.0)
+                plateau_tm_count = 0
             else:
                 win_frames += 1
+                win_tm_sum += tm_prev
+                win_tm_count += 1
+                plateau_tm_sum += tm_prev
+                plateau_tm_count += 1
                 if quality_score >= best_win_score:
                     best_win_score = quality_score
                     best_win_t = ts
@@ -231,14 +271,17 @@ def scan_video(
                 if checkpoint_ref_gray is not None and win_frames >= min_window_frames:
                     _, max_since_ref = _grid_tile_diffs(checkpoint_ref_gray, gray)
                     if max_since_ref > checkpoint_max_tile_thresh and best_win_rgb is not None:
-                        raw_checkpoints.append((best_win_t, win_start_t, ts, best_win_rgb))
+                        raw_checkpoints.append((best_win_t, win_start_t, ts, best_win_rgb, _window_motion_avg()))
                         win_start_t = ts
                         best_win_score = quality_score
                         best_win_t = ts
                         best_win_rgb = rgb
                         checkpoint_ref_gray = gray
+                        win_tm_sum.fill(0.0)
+                        win_tm_count = 0
 
         prev_gray = gray
+        prev_smooth = smooth_frac
         idx += 1
         if progress_cb and idx % max(1, expected_frames // 20) == 0:
             frac = min(0.95, idx / expected_frames)
@@ -252,13 +295,14 @@ def scan_video(
 
     final_end_t = max(duration, idx / sample_fps)
     if win_frames >= min_window_frames and best_win_rgb is not None:
-        raw_checkpoints.append((best_win_t, win_start_t, final_end_t, best_win_rgb))
+        raw_checkpoints.append((best_win_t, win_start_t, final_end_t, best_win_rgb, _window_motion_avg()))
 
     # Fallback: if video was super dynamic and yielded 0 stable windows, sample evenly
     if not raw_checkpoints and mask_rgb_samples:
+        zero_tm = np.zeros((grid_rows, grid_cols), dtype=np.float32)
         for i, rgb in enumerate(mask_rgb_samples):
             t_approx = (i * sample_stride_for_masks) / sample_fps
-            raw_checkpoints.append((t_approx, t_approx, min(final_end_t, t_approx + 1.0), rgb))
+            raw_checkpoints.append((t_approx, t_approx, min(final_end_t, t_approx + 1.0), rgb, zero_tm))
 
     if progress_cb:
         progress_cb("segmenting", 0.65, f"Building motion masks & analyzing {len(raw_checkpoints)} stable checkpoints...")
@@ -278,20 +322,50 @@ def scan_video(
     else:
         sx1, sy1, sx2, sy2 = 0, 0, scan_w, scan_h
 
-    cropped_grays = [g[sy1:sy2, sx1:sx2] for g in mask_gray_samples]
+    webcam_mask_full: np.ndarray | None = None
     webcam_mask: np.ndarray | None = None
     webcam_box: list[float] | None = None
     if config.ignore_webcam:
-        webcam_mask, webcam_box = detect_webcam_mask(cropped_grays)
+        if slide_pairs >= 6:
+            webcam_mask_full, _ = cluster_webcam_mask(slide_flicker, slide_pairs, scan_h, scan_w)
+        if webcam_mask_full is None and all_pairs >= 6:
+            webcam_mask_full, _ = cluster_webcam_mask(all_flicker, all_pairs, scan_h, scan_w)
+        if webcam_mask_full is not None:
+            sliced = webcam_mask_full[sy1:sy2, sx1:sx2]
+            if np.any(sliced):
+                webcam_mask = sliced
+                ah, aw = sliced.shape
+                ys_w, xs_w = np.where(sliced)
+                webcam_box = [
+                    round(int(xs_w.min()) / aw, 4),
+                    round(int(ys_w.min()) / ah, 4),
+                    round((int(xs_w.max()) + 1) / aw, 4),
+                    round((int(ys_w.max()) + 1) / ah, 4),
+                ]
 
     active_h = sy2 - sy1
     active_w = sx2 - sx1
     eval_mask = build_eval_mask(active_h, active_w, webcam_mask=webcam_mask, exclude_region=config.exclude_region)
 
+    # Identify 16x12 scan tiles belonging to the evaluated (non-webcam, cropped) area for intra-window motion checks
+    full_eval_tiles = np.zeros((grid_rows, grid_cols), dtype=bool)
+    full_eval_mask = np.zeros((scan_h, scan_w), dtype=bool)
+    full_eval_mask[sy1:sy2, sx1:sx2] = eval_mask
+    cell_h = max(1, scan_h // grid_rows)
+    cell_w = max(1, scan_w // grid_cols)
+    for r in range(grid_rows):
+        r0, r1 = r * cell_h, (scan_h if r == grid_rows - 1 else (r + 1) * cell_h)
+        for c in range(grid_cols):
+            c0, c1 = c * cell_w, (scan_w if c == grid_cols - 1 else (c + 1) * cell_w)
+            full_eval_tiles[r, c] = float(full_eval_mask[r0:r1, c0:c1].mean()) >= 0.50
+    if not np.any(full_eval_tiles):
+        full_eval_tiles[:] = True
+
     candidates: list[CandidateFrame] = []
-    for i, (ts, st, en, rgb) in enumerate(raw_checkpoints):
+    for i, (ts, st, en, rgb, win_tm_avg) in enumerate(raw_checkpoints):
         cropped_rgb = rgb[sy1:sy2, sx1:sx2]
         sig = compute_signature(cropped_rgb, timestamp=ts, eval_mask=eval_mask)
+        intra_motion = float(win_tm_avg[full_eval_tiles].mean()) if win_tm_avg.size == full_eval_tiles.size else 0.0
         candidates.append(
             CandidateFrame(
                 id=f"cand_{i:04d}_{uuid.uuid4().hex[:6]}",
@@ -300,6 +374,7 @@ def scan_video(
                 end_time=round(en, 3),
                 signature=sig,
                 preview_rgb=cropped_rgb,
+                intra_motion=round(intra_motion, 3),
             )
         )
 
@@ -382,22 +457,87 @@ def segment_candidates(scan: CachedScan, config: ExtractionConfig) -> tuple[list
         pending_scroll_tail = None
         pending_scroll_overlap = 0.0
 
-    for cand in scan.candidates:
-        # 1. Blank / extremely sparse screen filter
-        if config.skip_blank_or_facecam and cand.signature.content_density < 0.0035:
-            decisions.append(
-                SegmentDecision(
-                    candidate=cand,
-                    kept=False,
-                    filter_reason="low_content",
-                    similarity_to_prev=1.0,
-                    scroll_overlap_to_prev=0.0,
-                    start_time=cand.start_time,
-                    end_time=cand.end_time,
+    valid_containment_mask = eval_mask & (~scan.template_mask if scan.template_mask is not None else True)
+
+    def _collapse_trailing_scaled_builds() -> None:
+        nonlocal prog_merged
+        while config.collapse_progressive and len(kept_indices) >= 2:
+            cur_pos = kept_indices[-1]
+            prev_pos = kept_indices[-2]
+            cur_dec = decisions[cur_pos]
+            prev_dec = decisions[prev_pos]
+            if (
+                (cur_dec.start_time - prev_dec.end_time) <= 1.5
+                and (prev_dec.candidate.end_time - prev_dec.candidate.start_time) <= 2.5
+                and cur_dec.candidate.signature.content_density > prev_dec.candidate.signature.content_density * 1.15
+                and prev_dec.candidate.signature.content_density < 0.08
+            ):
+                prev_cc, prev_sr = check_scaled_additive_containment(
+                    prev_dec.candidate.signature,
+                    cur_dec.candidate.signature,
+                    valid_containment_mask,
                 )
+                if prev_cc >= 0.75 and prev_sr >= 0.38:
+                    decisions[cur_pos] = SegmentDecision(
+                        candidate=cur_dec.candidate,
+                        kept=True,
+                        filter_reason="kept",
+                        similarity_to_prev=prev_dec.similarity_to_prev,
+                        scroll_overlap_to_prev=prev_dec.scroll_overlap_to_prev,
+                        start_time=prev_dec.start_time,
+                        end_time=max(prev_dec.end_time, cur_dec.end_time),
+                    )
+                    decisions[prev_pos] = SegmentDecision(
+                        candidate=prev_dec.candidate,
+                        kept=False,
+                        filter_reason="progressive_step",
+                        similarity_to_prev=round(prev_cc, 4),
+                        scroll_overlap_to_prev=0.0,
+                        start_time=prev_dec.candidate.start_time,
+                        end_time=prev_dec.candidate.end_time,
+                    )
+                    kept_indices.pop(-2)
+                    prog_merged += 1
+                    continue
+            break
+
+    for cand in scan.candidates:
+        # 1. Blank / extremely sparse screen & full-screen talking-head camera filter
+        if config.skip_blank_or_facecam:
+            if cand.signature.content_density < 0.0035:
+                decisions.append(
+                    SegmentDecision(
+                        candidate=cand,
+                        kept=False,
+                        filter_reason="low_content",
+                        similarity_to_prev=1.0,
+                        scroll_overlap_to_prev=0.0,
+                        start_time=cand.start_time,
+                        end_time=cand.end_time,
+                    )
+                )
+                dups_filtered += 1
+                continue
+
+            is_facecam = (
+                cand.signature.smooth_frac < 0.44
+                and cand.signature.content_density > 0.16
+                and cand.intra_motion >= 0.70
             )
-            dups_filtered += 1
-            continue
+            if is_facecam:
+                decisions.append(
+                    SegmentDecision(
+                        candidate=cand,
+                        kept=False,
+                        filter_reason="facecam",
+                        similarity_to_prev=0.0,
+                        scroll_overlap_to_prev=0.0,
+                        start_time=cand.start_time,
+                        end_time=cand.end_time,
+                    )
+                )
+                dups_filtered += 1
+                continue
 
         if not kept_indices:
             decisions.append(
@@ -424,13 +564,28 @@ def segment_candidates(scan: CachedScan, config: ExtractionConfig) -> tuple[list
             check_scroll=True,
         )
 
-        # 2. Progressive / Additive Build Detection (bullet reveals & handwriting)
+        # 2. Progressive / Additive Build Detection (bullet reveals, handwriting & canvas zoom-outs)
         is_additive = (
             cmp.ret_a_to_b >= 0.78
             and cmp.disappeared_frac <= 0.22
             and cand.signature.content_density > active.candidate.signature.content_density * 1.03
             and cmp.added_frac >= 0.08
         )
+        if (
+            not is_additive
+            and config.collapse_progressive
+            and (cand.start_time - active.end_time) <= 2.2
+            and (active.candidate.end_time - active.candidate.start_time) <= 2.5
+            and cand.signature.content_density >= active.candidate.signature.content_density * 0.92
+            and active.candidate.signature.content_density < 0.08
+        ):
+            scaled_cc, scaled_ret = check_scaled_additive_containment(
+                active.candidate.signature,
+                cand.signature,
+                valid_containment_mask,
+            )
+            if scaled_cc >= 0.75 and scaled_ret >= 0.38:
+                is_additive = True
         if is_additive:
             if config.collapse_progressive:
                 decisions[active_pos] = SegmentDecision(
@@ -455,6 +610,7 @@ def segment_candidates(scan: CachedScan, config: ExtractionConfig) -> tuple[list
                 )
                 prog_merged += 1
                 pending_scroll_tail = None
+                _collapse_trailing_scaled_builds()
                 continue
             # Step-by-Step mode: keep meaningful progressive additions directly
             decisions.append(
@@ -493,8 +649,13 @@ def segment_candidates(scan: CachedScan, config: ExtractionConfig) -> tuple[list
             dups_filtered += 1
             continue
 
-        # 3. Near-identical static repeat (possibly pick sharper or more-annotated version)
-        if cmp.fg_iou >= 0.85 or (cmp.dhash_sim >= 0.92 and cmp.struct_sim >= 0.90):
+        # 3. Near-identical static repeat (including 1px sub-pixel zoom/pan drift)
+        is_mutual_stroke_match = (
+            cmp.ret_a_to_b >= 0.90
+            and cmp.ret_b_to_a >= 0.90
+            and cmp.struct_sim >= 0.78
+        )
+        if cmp.fg_iou >= 0.85 or (cmp.dhash_sim >= 0.92 and cmp.struct_sim >= 0.90) or is_mutual_stroke_match:
             active_q = active.candidate.signature.sharpness * (0.5 + active.candidate.signature.content_density * 2.0)
             cand_q = cand.signature.sharpness * (0.5 + cand.signature.content_density * 2.0)
             annotation_upgrade = (
@@ -644,6 +805,7 @@ def segment_candidates(scan: CachedScan, config: ExtractionConfig) -> tuple[list
             )
         )
         kept_indices.append(len(decisions) - 1)
+        _collapse_trailing_scaled_builds()
 
     _emit_pending_tail_if_needed()
 

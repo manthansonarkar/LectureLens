@@ -196,8 +196,9 @@ def export_pdf(
         fontSize=8.5,
         leading=11,
         textColor=colors.HexColor("#4F46E5"),
-        spaceBefore=4,
-        spaceAfter=2,
+        spaceBefore=6,
+        spaceAfter=3,
+        keepWithNext=True,
     )
     s_body = ParagraphStyle(
         "LLBody",
@@ -214,8 +215,6 @@ def export_pdf(
         fontSize=8.2,
         leading=11.5,
         textColor=colors.HexColor("#475569"),
-        backColor=colors.HexColor("#F8FAFC"),
-        borderPadding=6,
     )
 
     def _draw_chrome(canvas_obj, doc_obj) -> None:
@@ -432,7 +431,17 @@ def export_pdf(
             p = Path(sl.image_path)
             if not p.exists():
                 continue
-            max_img_h = 4.35 * inch if layout == PdfLayout.CORNELL_NOTES else 5.0 * inch
+            has_notes = bool(
+                (req.include_user_notes and sl.user_notes.strip())
+                or (req.include_ai_summary and sl.ai_summary.strip())
+                or (req.include_transcript and sl.transcript_text.strip())
+            )
+            if layout == PdfLayout.CORNELL_NOTES:
+                max_img_h = 4.35 * inch
+            elif not has_notes:
+                max_img_h = 3.55 * inch
+            else:
+                max_img_h = 5.0 * inch
             iw, ih = _fit_image_size(p, content_w - 12, max_img_h)
 
             hdr_parts = [f"Slide {sl.index:02d}", f"{sl.timestamp_label} - {format_timestamp(sl.end_time)}"]
@@ -455,33 +464,69 @@ def export_pdf(
                     ]
                 ),
             )
-            story.append(KeepTogether([Paragraph(hdr_line, s_section_hdr), img_frame, Spacer(1, 6)]))
-
-            if layout == PdfLayout.CORNELL_NOTES:
-                story.append(_CornellNotesBox(content_w, height=1.6 * inch))
-                story.append(Spacer(1, 6))
-
-            if req.include_user_notes and sl.user_notes.strip():
-                story.append(Paragraph("MY NOTES", s_label))
-                story.append(Paragraph(_safe_pdf_text(sl.user_notes, font_reg), s_body))
-
-            if req.include_ai_summary and sl.ai_summary.strip():
-                story.append(Paragraph("KEY TAKEAWAYS", s_label))
-                story.append(Paragraph(_safe_pdf_text(sl.ai_summary, font_reg), s_body))
-
-            if req.include_transcript and sl.transcript_text.strip():
-                story.append(Paragraph("LECTURER EXPLANATION", s_label))
-                clipped = sl.transcript_text.strip()
-                if len(clipped) > 1500:
-                    clipped = clipped[:1500] + "..."
-                story.append(Paragraph(_safe_pdf_text(clipped, font_reg), s_body))
-
+            ocr_tbl: Table | None = None
+            ocr_lines_count = 0
             if req.include_ocr and sl.ocr_text.strip():
-                story.append(Paragraph("EXTRACTED SLIDE TEXT (OCR)", s_label))
-                clipped_ocr = sl.ocr_text.strip()
+                ocr_lines = [ln for ln in sl.ocr_text.strip().splitlines() if ln.strip()]
+                ocr_lines_count = len(ocr_lines)
+                if len(ocr_lines) > 26:
+                    ocr_lines = ocr_lines[:26] + ["..."]
+                clipped_ocr = "\n".join(ocr_lines)
                 if len(clipped_ocr) > 1400:
-                    clipped_ocr = clipped_ocr[:1400] + "..."
-                story.append(Paragraph(_safe_pdf_text(clipped_ocr, font_reg), s_mono))
+                    clipped_ocr = clipped_ocr[:1400].rstrip() + "..."
+                ocr_tbl = Table(
+                    [[Paragraph(_safe_pdf_text(clipped_ocr, font_reg), s_mono)]],
+                    colWidths=[content_w],
+                )
+                ocr_tbl.setStyle(
+                    TableStyle(
+                        [
+                            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
+                            ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#E2E8F0")),
+                            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                            ("TOPPADDING", (0, 0), (-1, -1), 5),
+                            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                        ]
+                    )
+                )
+
+            if layout != PdfLayout.CORNELL_NOTES and not has_notes and ocr_tbl is not None and ocr_lines_count <= 10:
+                story.append(
+                    KeepTogether(
+                        [
+                            Paragraph(hdr_line, s_section_hdr),
+                            img_frame,
+                            Spacer(1, 4),
+                            Paragraph("EXTRACTED SLIDE TEXT (OCR)", s_label),
+                            ocr_tbl,
+                        ]
+                    )
+                )
+            else:
+                story.append(KeepTogether([Paragraph(hdr_line, s_section_hdr), img_frame, Spacer(1, 6)]))
+
+                if layout == PdfLayout.CORNELL_NOTES:
+                    story.append(_CornellNotesBox(content_w, height=1.6 * inch))
+                    story.append(Spacer(1, 6))
+
+                if req.include_user_notes and sl.user_notes.strip():
+                    story.append(Paragraph("MY NOTES", s_label))
+                    story.append(Paragraph(_safe_pdf_text(sl.user_notes, font_reg), s_body))
+
+                if req.include_ai_summary and sl.ai_summary.strip():
+                    story.append(Paragraph("KEY TAKEAWAYS", s_label))
+                    story.append(Paragraph(_safe_pdf_text(sl.ai_summary, font_reg), s_body))
+
+                if req.include_transcript and sl.transcript_text.strip():
+                    story.append(Paragraph("LECTURER EXPLANATION", s_label))
+                    clipped = sl.transcript_text.strip()
+                    if len(clipped) > 1500:
+                        clipped = clipped[:1500] + "..."
+                    story.append(Paragraph(_safe_pdf_text(clipped, font_reg), s_body))
+
+                if ocr_tbl is not None:
+                    story.append(KeepTogether([Paragraph("EXTRACTED SLIDE TEXT (OCR)", s_label), ocr_tbl]))
 
             if idx_item + 1 < len(kept):
                 story.append(Spacer(1, 16))

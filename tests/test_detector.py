@@ -241,3 +241,74 @@ def test_erased_board_steps_are_not_emitted_as_new_slides(tmp_path: Path) -> Non
     erased = [d for d in decisions if d.filter_reason == "erased_step"]
     assert len(kept) == 2
     assert len(erased) >= 1
+
+
+def test_blank_facecam_and_inset_pip_progressive_builds_filtered(tmp_path: Path) -> None:
+    fps = 4
+    w, h = 640, 360
+    rng = np.random.default_rng(99)
+    frames: list[np.ndarray] = []
+
+    def _with_inset_pip(canvas: np.ndarray, step: int) -> np.ndarray:
+        out = canvas.copy()
+        # Inset rounded PiP card on the right (does not touch right frame edge!)
+        out[76:292, 444:616] = (14, 165, 233)
+        out[82:286, 450:610] = (30, 41, 59)
+        cx = 468 + ((step * 17) % 60)
+        out[110:260, cx : cx + 52] = (
+            int(80 + (step * 29) % 150),
+            int(120 + (step * 43) % 120),
+            int(160 + (step * 19) % 80),
+        )
+        return out
+
+    # 1. Full-screen animated camera / talking-head frames (natural high-frequency textured scene moving in center)
+    base_scene = rng.integers(30, 210, size=(h // 4, w // 4, 3), dtype=np.uint8)
+    base_scene = np.repeat(np.repeat(base_scene, 4, axis=0), 4, axis=1)
+    for k in range(fps * 3):
+        cam = base_scene.copy()
+        shift = (k * 11) % 70
+        cam[80:280, 200 + shift : 270 + shift] = rng.integers(40, 220, size=(200, 70, 3), dtype=np.uint8)
+        frames.append(cam)
+
+    # 2. Blank white slide canvas with only the active inset PiP overlay
+    blank_canvas = np.full((h, w, 3), 255, dtype=np.uint8)
+    for k in range(fps * 2):
+        frames.append(_with_inset_pip(blank_canvas, k))
+
+    # 3. Single node repeated across different PiP hand positions, then built out into full 3-node diagram
+    step1 = _make_slide_image(1, "Engineering", ["From Scratch"])
+    step2 = _make_slide_image(1, "Engineering", ["From Scratch", "System Design", "Testing & Reliability"])
+    for k in range(fps * 3):
+        frames.append(_with_inset_pip(step1, 10 + k))
+    for k in range(fps * 3):
+        frames.append(_with_inset_pip(step2, 30 + k))
+
+    # 4. Static textured illustration slide (low smoothness, but ZERO intra-window motion) MUST be kept!
+    static_photo = base_scene.copy()
+    # Add high-contrast border/annotation to ensure distinctness from step2
+    static_photo[40:320, 40:400] = rng.integers(10, 240, size=(280, 360, 3), dtype=np.uint8)
+    for k in range(fps * 2):
+        frames.append(_with_inset_pip(static_photo, 40 + k))
+
+    # 5. Dark-background math slide must still be kept even with skip_blank_or_facecam=True
+    dark_slide = _make_slide_image(2, "Neural Nets", ["Layer Weights W", "ReLU Activation"], dark=True)
+    for k in range(fps * 3):
+        frames.append(_with_inset_pip(dark_slide, 50 + k))
+
+    mp4 = tmp_path / "facecam_blank_inset_pip.mp4"
+    _encode_frames_to_mp4(frames, fps=fps, out_path=mp4)
+    meta = inspect_local_video(mp4)
+
+    cfg = ExtractionConfig.from_preset(ExtractionPreset.SMART_LECTURE, enable_ocr=False, enable_transcript=False)
+    scan = scan_video(mp4, meta, cfg)
+    decisions, stats = segment_candidates(scan, cfg)
+    kept = [d for d in decisions if d.kept]
+    reasons = {d.filter_reason for d in decisions}
+
+    assert stats.webcam_masked is True
+    assert "facecam" in reasons
+    assert "low_content" in reasons
+    assert len(kept) == 3
+    assert kept[0].candidate.timestamp >= 5.0  # skipped facecam + blank, collapsed step1 into step2
+    assert kept[2].candidate.timestamp >= 12.5  # dark slide preserved!

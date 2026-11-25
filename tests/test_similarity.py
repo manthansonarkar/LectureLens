@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 from lecturelens.similarity import (
     build_eval_mask,
+    check_scaled_additive_containment,
     compare_frames,
     compute_signature,
     compute_template_mask,
@@ -162,3 +163,57 @@ def test_template_mask_identifies_static_watermark() -> None:
     t_mask = compute_template_mask(sigs)
     assert t_mask is not None
     assert np.any(t_mask[6:23, 265:313])
+
+
+def test_webcam_mask_detects_inset_pip_during_camera_cuts() -> None:
+    rng = np.random.default_rng(123)
+    grays: list[np.ndarray] = []
+
+    # First 8 frames: noisy full-screen camera frames (low flat smoothness, full-frame motion)
+    for _ in range(8):
+        cam = rng.integers(25, 220, size=(180, 320), dtype=np.uint8).astype(np.float32)
+        grays.append(cam)
+
+    # Next 10 frames: clean white canvas slide with inset floating right-side PiP box (does not touch outer border)
+    base = _draw_slide("System Design", ["Node 1: API Gateway", "Node 2: Worker Queue"])
+    base_gray = np.mean(base, axis=2).astype(np.float32)
+    for _ in range(10):
+        g = base_gray.copy()
+        g[42:136, 224:302] = rng.integers(30, 230, size=(94, 78), dtype=np.uint8).astype(np.float32)
+        grays.append(g)
+
+    mask, box = detect_webcam_mask(grays)
+    assert mask is not None
+    assert box is not None
+    assert mask[90, 265]
+    assert not mask[80, 100]
+
+
+def test_scaled_additive_containment_detects_zoom_out() -> None:
+    # Small central box zoomed out when an enclosing container box is added
+    im1 = Image.new("RGB", (320, 180), "white")
+    d1 = ImageDraw.Draw(im1)
+    d1.rectangle([110, 68, 210, 112], outline="#1D4ED8", fill="#EFF6FF", width=3)
+    d1.text((125, 84), "Core Module", fill="#0F172A")
+
+    im2 = Image.new("RGB", (320, 180), "white")
+    d2 = ImageDraw.Draw(im2)
+    d2.rectangle([50, 22, 270, 158], outline="#0F172A", width=3)
+    d2.text((64, 30), "Outer Architecture", fill="#0F172A")
+    # Replicate scaled (~0.70x) Core Module inside
+    crop1 = im1.crop((108, 66, 212, 114)).resize((74, 34), Image.Resampling.BILINEAR)
+    im2.paste(crop1, (124, 76))
+
+    im3 = Image.new("RGB", (320, 180), "white")
+    d3 = ImageDraw.Draw(im3)
+    d3.ellipse([40, 30, 140, 140], fill="#DC2626")
+    d3.text((170, 80), "Completely Different Chart", fill="black")
+
+    sig1 = compute_signature(np.array(im1), 1.0)
+    sig2 = compute_signature(np.array(im2), 2.0)
+    sig3 = compute_signature(np.array(im3), 4.0)
+
+    cc_12, ret_12 = check_scaled_additive_containment(sig1, sig2)
+    cc_13, ret_13 = check_scaled_additive_containment(sig1, sig3)
+    assert cc_12 >= 0.75 and ret_12 >= 0.38
+    assert cc_13 < 0.75 or ret_13 < 0.38
