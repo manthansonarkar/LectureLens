@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  code, pre, .font-mono {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+}
+
+/* Subtle studio grid backdrop */
+.bg-studio-grid {
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(99, 102, 241, 0.14) 1px, transparent 0);
+  background-size: 28px 28px;
+}
+
+.bg-paper-grid {
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(79, 70, 229, 0.08) 1px, transparent 0);
+  background-size: 28px 28px;
+}

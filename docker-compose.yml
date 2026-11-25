@@ -1,0 +1,13 @@
+services:
+  lecturelens:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - lecturelens_cache:/root/.cache/lecturelens
+    environment:
+      - OLLAMA_HOST=http://host.docker.internal:11434
+    restart: unless-stopped
+
+volumes:
+  lecturelens_cache:
