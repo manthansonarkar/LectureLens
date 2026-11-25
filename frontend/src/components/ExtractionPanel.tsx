@@ -5,8 +5,7 @@ import {
   Layers,
   ScanEye,
   SlidersHorizontal,
-  Sparkles,
-  Wand2,
+  BookOpenCheck,
 } from "lucide-react";
 import { PRESET_CONFIGS, type ExtractionConfig, type ExtractionPreset, type HealthStatus } from "../types";
 
@@ -22,27 +21,27 @@ const PRESET_CARDS: {
   title: string;
   badge: string;
   desc: string;
-  icon: typeof Sparkles;
+  icon: typeof BookOpenCheck;
 }[] = [
   {
     id: "smart",
     title: "Smart Lecture Notes",
-    badge: "Recommended",
-    desc: "Captures finished slides & handwritten pages, collapses progressive reveals, ignores webcam motion.",
-    icon: Sparkles,
+    badge: "Default",
+    desc: "Waits for finished slides and board writing before capturing, while hiding moving webcams.",
+    icon: BookOpenCheck,
   },
   {
     id: "strict_overlap",
-    title: "Max 20–30% Similarity",
+    title: "20–30% Similarity",
     badge: "Strict / Scroll",
-    desc: "Enforces ≤30% overlap between consecutive captures — ideal for scrolling PDFs, docs, and strict dedup.",
+    desc: "Keeps only frames with ≤30% overlap — ideal for scrolling PDFs, documents, and minimal duplicates.",
     icon: Layers,
   },
   {
     id: "detailed",
-    title: "Step-by-Step Animations",
-    badge: "High Detail",
-    desc: "Keeps incremental bullet reveals, build animations, and smaller visual updates (≥14% change).",
+    title: "Step-by-Step",
+    badge: "Detailed",
+    desc: "Captures incremental bullet reveals, animations, and smaller visual additions.",
     icon: ScanEye,
   },
 ];
@@ -63,25 +62,25 @@ export function ExtractionPanel({ dark, config, onChange, health }: ExtractionPa
 
   return (
     <section
-      className={`rounded-2xl border p-5 transition-colors ${
-        dark ? "border-slate-800 bg-slate-900/75" : "border-slate-200 bg-white shadow-sm"
+      className={`rounded-[24px] p-5 transition-all ${
+        dark ? "glass-dark" : "glass-light"
       }`}
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <SlidersHorizontal className="h-4 w-4 text-indigo-400" />
-          <h3 className="text-sm font-bold uppercase tracking-wider">Extraction Intelligence</h3>
+          <SlidersHorizontal className="h-4 w-4 text-[#007AFF]" />
+          <h3 className="text-sm font-semibold tracking-tight">Capture Preferences</h3>
         </div>
         <button
           type="button"
           onClick={() => setShowAdvanced((v) => !v)}
-          className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
+          className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
             dark
-              ? "bg-slate-800 text-slate-300 hover:bg-slate-700"
-              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              ? "bg-white/10 text-neutral-200 hover:bg-white/15"
+              : "bg-black/[0.05] text-slate-700 hover:bg-black/[0.09]"
           }`}
         >
-          {showAdvanced ? "Hide Fine Tuning" : "Fine Tuning & AI Options"}
+          {showAdvanced ? "Hide Options" : "More Options"}
           {showAdvanced ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
         </button>
       </div>
@@ -96,38 +95,38 @@ export function ExtractionPanel({ dark, config, onChange, health }: ExtractionPa
               key={p.id}
               type="button"
               onClick={() => selectPreset(p.id)}
-              className={`group flex flex-col rounded-xl border p-3.5 text-left transition-all ${
+              className={`flex flex-col rounded-2xl p-3.5 text-left transition-all ${
                 active
                   ? dark
-                    ? "border-indigo-500 bg-indigo-500/15 ring-1 ring-indigo-500/40"
-                    : "border-indigo-600 bg-indigo-50/70 ring-1 ring-indigo-600/25"
+                    ? "bg-[#0A84FF]/20 ring-2 ring-[#0A84FF]"
+                    : "bg-[#007AFF]/[0.09] ring-2 ring-[#007AFF] shadow-sm"
                   : dark
-                    ? "border-slate-800 bg-slate-950/60 hover:border-slate-700"
-                    : "border-slate-200 bg-slate-50/60 hover:border-slate-300"
+                    ? "glass-dark-subtle hover:bg-white/10"
+                    : "glass-light-subtle hover:bg-white/80"
               }`}
             >
               <div className="flex w-full items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <Icon
                     className={`h-4 w-4 ${
-                      active ? "text-indigo-400" : dark ? "text-slate-400" : "text-slate-500"
+                      active ? "text-[#007AFF]" : dark ? "text-neutral-400" : "text-slate-500"
                     }`}
                   />
-                  <span className="text-sm font-bold">{p.title}</span>
+                  <span className="text-sm font-semibold">{p.title}</span>
                 </div>
                 <span
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                  className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${
                     active
-                      ? "bg-indigo-600 text-white"
+                      ? "bg-[#007AFF] text-white"
                       : dark
-                        ? "bg-slate-800 text-slate-400"
-                        : "bg-slate-200 text-slate-600"
+                        ? "bg-white/10 text-neutral-300"
+                        : "bg-black/[0.06] text-slate-600"
                   }`}
                 >
                   {p.badge}
                 </span>
               </div>
-              <p className={`mt-1.5 text-xs leading-relaxed ${dark ? "text-slate-400" : "text-slate-600"}`}>
+              <p className={`mt-1.5 text-xs leading-relaxed ${dark ? "text-neutral-400" : "text-slate-600"}`}>
                 {p.desc}
               </p>
             </button>
@@ -135,19 +134,17 @@ export function ExtractionPanel({ dark, config, onChange, health }: ExtractionPa
         })}
       </div>
 
-      {/* Core Similarity Sliders */}
-      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div
-          className={`rounded-xl border p-3.5 ${
-            dark ? "border-slate-800 bg-slate-950/50" : "border-slate-200 bg-slate-50/70"
-          }`}
-        >
+      {/* Tactile Glass Sliders */}
+      <div className="mt-4 grid grid-cols-1 gap-3.5 md:grid-cols-2">
+        <div className={`rounded-2xl p-3.5 ${dark ? "glass-dark-subtle" : "glass-light-subtle"}`}>
           <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold">
-              Max Allowed Similarity Between Slides
-            </label>
-            <span className="rounded-md bg-indigo-600/15 px-2 py-0.5 font-mono text-xs font-bold text-indigo-400">
-              {simPct}% max overlap
+            <label className="text-xs font-semibold">Max Similarity Between Slides</label>
+            <span
+              className={`rounded-full px-2.5 py-0.5 font-mono text-xs font-semibold ${
+                dark ? "bg-[#0A84FF]/20 text-[#60A5FA]" : "bg-[#007AFF]/10 text-[#007AFF]"
+              }`}
+            >
+              {simPct}%
             </span>
           </div>
           <input
@@ -159,27 +156,28 @@ export function ExtractionPanel({ dark, config, onChange, health }: ExtractionPa
             onChange={(e) =>
               onChange({ ...config, max_similarity: Number(e.target.value) / 100 })
             }
-            className="mt-2.5 w-full accent-indigo-500"
+            style={{
+              background: `linear-gradient(to right, #007AFF 0%, #007AFF ${((simPct - 15) / 77) * 100}%, ${dark ? "rgba(255,255,255,0.16)" : "rgba(15,23,42,0.12)"} ${((simPct - 15) / 77) * 100}%)`,
+            }}
+            className="ios-slider mt-3 w-full"
           />
-          <div className={`mt-1 flex justify-between text-[11px] ${dark ? "text-slate-500" : "text-slate-500"}`}>
-            <span>15% (Ultra Distinct)</span>
-            <span>30% (20–30% Overlap)</span>
-            <span>72% (Slide Dedup)</span>
+          <div className={`mt-1.5 flex justify-between text-[11px] ${dark ? "text-neutral-500" : "text-slate-500"}`}>
+            <span>15% Distinct</span>
+            <span>30% Overlap</span>
+            <span>72% Balanced</span>
             <span>92%</span>
           </div>
         </div>
 
-        <div
-          className={`rounded-xl border p-3.5 ${
-            dark ? "border-slate-800 bg-slate-950/50" : "border-slate-200 bg-slate-50/70"
-          }`}
-        >
+        <div className={`rounded-2xl p-3.5 ${dark ? "glass-dark-subtle" : "glass-light-subtle"}`}>
           <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold">
-              Scrolling Notes Max Overlap
-            </label>
-            <span className="rounded-md bg-cyan-500/15 px-2 py-0.5 font-mono text-xs font-bold text-cyan-400">
-              {scrollPct}% scroll overlap
+            <label className="text-xs font-semibold">Scrolling Page Overlap</label>
+            <span
+              className={`rounded-full px-2.5 py-0.5 font-mono text-xs font-semibold ${
+                dark ? "bg-emerald-500/20 text-emerald-300" : "bg-emerald-500/10 text-emerald-700"
+              }`}
+            >
+              {scrollPct}%
             </span>
           </div>
           <input
@@ -191,28 +189,31 @@ export function ExtractionPanel({ dark, config, onChange, health }: ExtractionPa
             onChange={(e) =>
               onChange({ ...config, scroll_max_overlap: Number(e.target.value) / 100 })
             }
-            className="mt-2.5 w-full accent-cyan-500"
+            style={{
+              background: `linear-gradient(to right, #34C759 0%, #34C759 ${((scrollPct - 10) / 65) * 100}%, ${dark ? "rgba(255,255,255,0.16)" : "rgba(15,23,42,0.12)"} ${((scrollPct - 10) / 65) * 100}%)`,
+            }}
+            className="ios-slider mt-3 w-full"
           />
-          <div className={`mt-1 flex justify-between text-[11px] ${dark ? "text-slate-500" : "text-slate-500"}`}>
-            <span>10% (Minimal)</span>
-            <span>25–30% (Recommended)</span>
-            <span>75% (Frequent)</span>
+          <div className={`mt-1.5 flex justify-between text-[11px] ${dark ? "text-neutral-500" : "text-slate-500"}`}>
+            <span>10%</span>
+            <span>25–30% Recommended</span>
+            <span>75%</span>
           </div>
         </div>
       </div>
 
-      {/* Quick Feature Pills */}
+      {/* Clean Toggle Pills */}
       <div className="mt-4 flex flex-wrap gap-2">
         {(
           [
-            ["ignore_webcam", "Auto-Mask Webcam"],
-            ["collapse_progressive", "Keep Completed Board/Builds"],
-            ["auto_crop_borders", "Auto-Crop Black Bars"],
-            ["global_dedup", "Global Repeat Dedup"],
-            ["enable_ocr", "OCR Searchable Text"],
-            ["enable_transcript", "Align Spoken Transcript"],
-            ["ollama_vision_filter", "Offline Ollama Vision Filter"],
-            ["cleanup_video", "Auto-Delete Video Cache"],
+            ["ignore_webcam", "Ignore Webcam"],
+            ["collapse_progressive", "Completed Pages Only"],
+            ["auto_crop_borders", "Crop Black Bars"],
+            ["global_dedup", "Skip Repeat Slides"],
+            ["enable_ocr", "Text Search (OCR)"],
+            ["enable_transcript", "Match Captions"],
+            ["ollama_vision_filter", "Offline Vision Check"],
+            ["cleanup_video", "Auto-Clear Video"],
           ] as const
         ).map(([key, label]) => {
           const active = config[key];
@@ -221,19 +222,19 @@ export function ExtractionPanel({ dark, config, onChange, health }: ExtractionPa
               key={key}
               type="button"
               onClick={() => onChange({ ...config, [key]: !active })}
-              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all ${
+              className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-medium transition-all ${
                 active
                   ? dark
-                    ? "border-indigo-500/50 bg-indigo-500/15 text-indigo-200"
-                    : "border-indigo-300 bg-indigo-50 text-indigo-700"
+                    ? "bg-[#0A84FF]/20 text-white ring-1 ring-[#0A84FF]/70"
+                    : "bg-[#007AFF]/10 text-[#007AFF] ring-1 ring-[#007AFF]/35"
                   : dark
-                    ? "border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700"
-                    : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"
+                    ? "bg-white/[0.06] text-neutral-400 hover:bg-white/10"
+                    : "bg-black/[0.04] text-slate-600 hover:bg-black/[0.07]"
               }`}
             >
               <span
                 className={`h-2 w-2 rounded-full ${
-                  active ? "bg-indigo-400" : dark ? "bg-slate-700" : "bg-slate-300"
+                  active ? "bg-[#007AFF]" : dark ? "bg-neutral-600" : "bg-slate-300"
                 }`}
               />
               {label}
@@ -242,15 +243,15 @@ export function ExtractionPanel({ dark, config, onChange, health }: ExtractionPa
         })}
       </div>
 
-      {/* Expandable Advanced & AI Notes Section */}
+      {/* Expandable More Options */}
       {showAdvanced && (
         <div
-          className={`mt-4 grid grid-cols-1 gap-4 rounded-xl border p-4 md:grid-cols-3 ${
-            dark ? "border-slate-800 bg-slate-950/60" : "border-slate-200 bg-slate-50"
+          className={`mt-4 grid grid-cols-1 gap-4 rounded-2xl p-4 md:grid-cols-3 ${
+            dark ? "glass-dark-subtle" : "glass-light-subtle"
           }`}
         >
           <div>
-            <label className="mb-1.5 block text-xs font-semibold">Stream Resolution</label>
+            <label className="mb-1.5 block text-xs font-semibold">Video Quality</label>
             <select
               value={config.video_quality}
               onChange={(e) =>
@@ -259,22 +260,21 @@ export function ExtractionPanel({ dark, config, onChange, health }: ExtractionPa
                   video_quality: e.target.value as ExtractionConfig["video_quality"],
                 })
               }
-              className={`w-full rounded-lg border px-3 py-2 text-xs font-medium outline-none ${
+              className={`w-full rounded-xl border px-3 py-2 text-xs font-medium outline-none ${
                 dark
-                  ? "border-slate-700 bg-slate-900 text-slate-200"
-                  : "border-slate-300 bg-white text-slate-800"
+                  ? "border-white/15 bg-black/40 text-white"
+                  : "border-black/10 bg-white/80 text-slate-800"
               }`}
             >
-              <option value="1080p">1080p Full HD (Recommended)</option>
-              <option value="720p">720p Fast Download</option>
-              <option value="best">Best Available (up to 4K)</option>
+              <option value="1080p">1080p HD (Recommended)</option>
+              <option value="720p">720p Fast</option>
+              <option value="best">Highest Available</option>
             </select>
           </div>
 
           <div>
-            <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold">
-              <Wand2 className="h-3.5 w-3.5 text-violet-400" />
-              AI Study Notes Polish (Optional)
+            <label className="mb-1.5 block text-xs font-semibold">
+              Optional Summary Model
             </label>
             <select
               value={config.ai_notes_provider}
@@ -285,40 +285,37 @@ export function ExtractionPanel({ dark, config, onChange, health }: ExtractionPa
                     ? health?.ollama_models?.[0] || "gemma3:4b"
                     : prov === "openai"
                       ? "gpt-4o-mini"
-                      : prov === "gemini"
-                        ? "gemini-2.5-flash"
-                        : "";
+                      : "";
                 onChange({ ...config, ai_notes_provider: prov, ai_model: defaultModel });
               }}
-              className={`w-full rounded-lg border px-3 py-2 text-xs font-medium outline-none ${
+              className={`w-full rounded-xl border px-3 py-2 text-xs font-medium outline-none ${
                 dark
-                  ? "border-slate-700 bg-slate-900 text-slate-200"
-                  : "border-slate-300 bg-white text-slate-800"
+                  ? "border-white/15 bg-black/40 text-white"
+                  : "border-black/10 bg-white/80 text-slate-800"
               }`}
             >
-              <option value="off">Off (Fastest — OCR + Spoken Transcript)</option>
+              <option value="off">Off (Fastest — OCR + Captions Only)</option>
               <option value="ollama">
-                Local Ollama AI {health?.ollama_models?.length ? `(${health.ollama_models[0]})` : ""}
+                Local Ollama {health?.ollama_models?.length ? `(${health.ollama_models[0]})` : ""}
               </option>
-              <option value="gemini">Google Gemini API</option>
-              <option value="openai">OpenAI API</option>
+              <option value="openai">Custom OpenAI-Compatible API</option>
             </select>
           </div>
 
           {config.ai_notes_provider !== "off" ? (
             <div className="space-y-2">
               <label className="block text-xs font-semibold">
-                Model &amp; {config.ai_notes_provider === "ollama" ? "Tag" : "API Key"}
+                Model &amp; {config.ai_notes_provider === "ollama" ? "Name" : "API Key"}
               </label>
               <input
                 type="text"
                 value={config.ai_model}
                 onChange={(e) => onChange({ ...config, ai_model: e.target.value })}
                 placeholder="Model name"
-                className={`w-full rounded-lg border px-3 py-1.5 text-xs outline-none ${
+                className={`w-full rounded-xl border px-3 py-1.5 text-xs outline-none ${
                   dark
-                    ? "border-slate-700 bg-slate-900 text-slate-200"
-                    : "border-slate-300 bg-white text-slate-800"
+                    ? "border-white/15 bg-black/40 text-white"
+                    : "border-black/10 bg-white/80 text-slate-800"
                 }`}
               />
               {config.ai_notes_provider !== "ollama" && (
@@ -326,11 +323,11 @@ export function ExtractionPanel({ dark, config, onChange, health }: ExtractionPa
                   type="password"
                   value={config.ai_api_key}
                   onChange={(e) => onChange({ ...config, ai_api_key: e.target.value })}
-                  placeholder="Paste API key (kept in memory only)"
-                  className={`w-full rounded-lg border px-3 py-1.5 text-xs outline-none ${
+                  placeholder="API key (in memory only)"
+                  className={`w-full rounded-xl border px-3 py-1.5 text-xs outline-none ${
                     dark
-                      ? "border-slate-700 bg-slate-900 text-slate-200"
-                      : "border-slate-300 bg-white text-slate-800"
+                      ? "border-white/15 bg-black/40 text-white"
+                      : "border-black/10 bg-white/80 text-slate-800"
                   }`}
                 />
               )}
@@ -338,7 +335,7 @@ export function ExtractionPanel({ dark, config, onChange, health }: ExtractionPa
           ) : (
             <div>
               <label className="mb-1.5 block text-xs font-semibold">
-                Scan Frame Rate (0 = Auto Adaptive)
+                Scan Rate (0 = Auto)
               </label>
               <input
                 type="number"
@@ -349,10 +346,10 @@ export function ExtractionPanel({ dark, config, onChange, health }: ExtractionPa
                 onChange={(e) =>
                   onChange({ ...config, sample_fps: Math.max(0, Number(e.target.value)) })
                 }
-                className={`w-full rounded-lg border px-3 py-2 text-xs outline-none ${
+                className={`w-full rounded-xl border px-3 py-2 text-xs outline-none ${
                   dark
-                    ? "border-slate-700 bg-slate-900 text-slate-200"
-                    : "border-slate-300 bg-white text-slate-800"
+                    ? "border-white/15 bg-black/40 text-white"
+                    : "border-black/10 bg-white/80 text-slate-800"
                 }`}
               />
             </div>

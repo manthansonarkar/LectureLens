@@ -20,35 +20,35 @@ const FORMAT_OPTIONS: {
 }[] = [
   {
     id: "pdf",
-    title: "PDF Study Document",
-    subtitle: "Vector cover, clickable YouTube links, OCR & study layouts",
+    title: "PDF Notes",
+    subtitle: "Clean study pages, clickable YouTube timestamps & OCR",
     icon: FileText,
   },
   {
     id: "docx",
-    title: "Word Document (.DOCX)",
-    subtitle: "Fully editable in MS Word, Google Docs & Apple Pages",
+    title: "Word (.DOCX)",
+    subtitle: "Editable in Microsoft Word, Google Docs & Apple Pages",
     icon: FileType2,
   },
   {
     id: "markdown_zip",
-    title: "Markdown + PNGs (.ZIP)",
-    subtitle: "Drop straight into Obsidian or Notion with embedded images",
+    title: "Markdown + PNGs",
+    subtitle: "Ready for Notion or Obsidian with relative image links",
     icon: FileCode2,
   },
   {
     id: "images_zip",
-    title: "Raw HD PNGs (.ZIP)",
-    subtitle: "Cleanly numbered lossless screenshots only",
+    title: "PNG Images (.ZIP)",
+    subtitle: "Numbered lossless HD screenshots only",
     icon: Archive,
   },
 ];
 
 const PDF_LAYOUTS: { id: PdfLayout; name: string; desc: string }[] = [
-  { id: "study_full", name: "Full Study Mode", desc: "Large slide + spoken notes + searchable OCR" },
-  { id: "cornell_notes", name: "Cornell Notes", desc: "Slide + lined margin box for iPad / print writing" },
-  { id: "handout_2x1", name: "2x1 Handout", desc: "Two slides per page for compact reading" },
-  { id: "grid_2x2", name: "2x2 Revision Grid", desc: "Four slides per page cheat-sheet view" },
+  { id: "study_full", name: "Full Study", desc: "Large slide + captions + searchable text" },
+  { id: "cornell_notes", name: "Cornell Notes", desc: "Slide + lined margin for writing" },
+  { id: "handout_2x1", name: "2×1 Handout", desc: "Two slides per page" },
+  { id: "grid_2x2", name: "2×2 Grid", desc: "Four slides per page" },
 ];
 
 export function ExportDialog({
@@ -95,55 +95,53 @@ export function ExportDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-xl"
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`w-full max-w-2xl overflow-hidden rounded-2xl border shadow-2xl ${
-          dark
-            ? "border-slate-700 bg-slate-900 text-slate-100"
-            : "border-slate-200 bg-white text-slate-900"
+        className={`w-full max-w-2xl overflow-hidden rounded-[28px] ${
+          dark ? "glass-dark text-white" : "glass-light text-slate-900"
         }`}
       >
-        <div className="flex items-center justify-between border-b border-slate-700/30 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-black/10 px-6 py-4">
           <div>
-            <h3 className="text-lg font-bold">Export Lecture Notes</h3>
-            <p className={`text-xs ${dark ? "text-slate-400" : "text-slate-500"}`}>
-              Packaging {slidesCount} curated screenshots into your selected format
+            <h3 className="text-lg font-semibold tracking-tight">Export Notes</h3>
+            <p className={`text-xs ${dark ? "text-neutral-400" : "text-slate-500"}`}>
+              {slidesCount} curated screenshots ready to package
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className={`rounded-lg p-1.5 ${
-              dark ? "hover:bg-slate-800 text-slate-400" : "hover:bg-slate-100 text-slate-500"
+            className={`rounded-full p-1.5 ${
+              dark ? "bg-white/10 text-neutral-300 hover:bg-white/15" : "bg-black/[0.05] text-slate-600 hover:bg-black/10"
             }`}
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         <div className="max-h-[75vh] space-y-5 overflow-y-auto p-6">
           <div>
-            <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-indigo-400">
+            <label className={`mb-1.5 block text-xs font-semibold ${dark ? "text-neutral-300" : "text-slate-600"}`}>
               Document Title
             </label>
             <input
               type="text"
               value={titleOverride}
               onChange={(e) => setTitleOverride(e.target.value)}
-              className={`w-full rounded-xl border px-3.5 py-2.5 text-sm outline-none ${
+              className={`w-full rounded-2xl border px-3.5 py-2.5 text-sm outline-none ${
                 dark
-                  ? "border-slate-700 bg-slate-950 text-slate-100 focus:border-indigo-500"
-                  : "border-slate-300 bg-slate-50 text-slate-900 focus:border-indigo-500"
+                  ? "border-white/15 bg-black/30 text-white focus:border-[#0A84FF]"
+                  : "border-black/10 bg-white/80 text-slate-900 focus:border-[#007AFF]"
               }`}
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-indigo-400">
-              Output Format
+            <label className={`mb-2 block text-xs font-semibold ${dark ? "text-neutral-300" : "text-slate-600"}`}>
+              Format
             </label>
             <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
               {FORMAT_OPTIONS.map((opt) => {
@@ -154,24 +152,24 @@ export function ExportDialog({
                     key={opt.id}
                     type="button"
                     onClick={() => setFormat(opt.id)}
-                    className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-all ${
+                    className={`flex items-start gap-3 rounded-2xl p-3.5 text-left transition-all ${
                       active
                         ? dark
-                          ? "border-indigo-500 bg-indigo-500/15"
-                          : "border-indigo-600 bg-indigo-50"
+                          ? "bg-[#0A84FF]/20 ring-2 ring-[#0A84FF]"
+                          : "bg-[#007AFF]/[0.09] ring-2 ring-[#007AFF]"
                         : dark
-                          ? "border-slate-800 bg-slate-950/60 hover:border-slate-700"
-                          : "border-slate-200 bg-slate-50 hover:border-slate-300"
+                          ? "glass-dark-subtle hover:bg-white/10"
+                          : "glass-light-subtle hover:bg-white/85"
                     }`}
                   >
                     <Icon
                       className={`mt-0.5 h-5 w-5 shrink-0 ${
-                        active ? "text-indigo-400" : "text-slate-400"
+                        active ? "text-[#007AFF]" : dark ? "text-neutral-400" : "text-slate-500"
                       }`}
                     />
                     <div>
-                      <div className="text-sm font-bold">{opt.title}</div>
-                      <div className={`text-[11px] ${dark ? "text-slate-400" : "text-slate-500"}`}>
+                      <div className="text-sm font-semibold">{opt.title}</div>
+                      <div className={`text-[11px] ${dark ? "text-neutral-400" : "text-slate-500"}`}>
                         {opt.subtitle}
                       </div>
                     </div>
@@ -183,7 +181,7 @@ export function ExportDialog({
 
           {format === "pdf" && (
             <div>
-              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-indigo-400">
+              <label className={`mb-2 block text-xs font-semibold ${dark ? "text-neutral-300" : "text-slate-600"}`}>
                 PDF Page Layout
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -194,18 +192,18 @@ export function ExportDialog({
                       key={l.id}
                       type="button"
                       onClick={() => setPdfLayout(l.id)}
-                      className={`rounded-xl border p-2.5 text-left transition-all ${
+                      className={`rounded-2xl p-3 text-left transition-all ${
                         active
                           ? dark
-                            ? "border-cyan-500 bg-cyan-500/15"
-                            : "border-cyan-600 bg-cyan-50"
+                            ? "bg-[#0A84FF]/20 ring-2 ring-[#0A84FF]"
+                            : "bg-[#007AFF]/[0.09] ring-2 ring-[#007AFF]"
                           : dark
-                            ? "border-slate-800 bg-slate-950/60"
-                            : "border-slate-200 bg-slate-50"
+                            ? "glass-dark-subtle"
+                            : "glass-light-subtle"
                       }`}
                     >
-                      <div className="text-xs font-bold">{l.name}</div>
-                      <div className={`text-[11px] ${dark ? "text-slate-400" : "text-slate-500"}`}>
+                      <div className="text-xs font-semibold">{l.name}</div>
+                      <div className={`text-[11px] ${dark ? "text-neutral-400" : "text-slate-500"}`}>
                         {l.desc}
                       </div>
                     </button>
@@ -220,24 +218,22 @@ export function ExportDialog({
               {(
                 [
                   ["OCR Slide Text", includeOcr, setIncludeOcr],
-                  ["Spoken Lecture Transcript", includeTranscript, setIncludeTranscript],
-                  ["My Study Notes", includeNotes, setIncludeNotes],
-                  ["AI Takeaways", includeAi, setIncludeAi],
+                  ["Spoken Captions", includeTranscript, setIncludeTranscript],
+                  ["Personal Notes", includeNotes, setIncludeNotes],
+                  ["Overview Notes", includeAi, setIncludeAi],
                 ] as const
               ).map(([label, checked, setter]) => (
                 <label
                   key={label}
-                  className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold ${
-                    dark
-                      ? "border-slate-800 bg-slate-950 text-slate-300"
-                      : "border-slate-200 bg-slate-50 text-slate-700"
+                  className={`inline-flex cursor-pointer items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-medium ${
+                    dark ? "glass-dark-subtle text-neutral-200" : "glass-light-subtle text-slate-700"
                   }`}
                 >
                   <input
                     type="checkbox"
                     checked={checked}
                     onChange={(e) => setter(e.target.checked)}
-                    className="accent-indigo-500"
+                    className="accent-[#007AFF]"
                   />
                   {label}
                 </label>
@@ -246,18 +242,18 @@ export function ExportDialog({
           )}
 
           {error && (
-            <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-xs text-rose-400">
+            <div className="rounded-2xl border border-rose-500/35 bg-rose-500/10 p-3 text-xs text-rose-500">
               {error}
             </div>
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-3 border-t border-slate-700/30 px-6 py-4">
+        <div className="flex items-center justify-end gap-2.5 border-t border-black/10 px-6 py-4">
           <button
             type="button"
             onClick={onClose}
-            className={`rounded-xl px-4 py-2 text-xs font-semibold ${
-              dark ? "bg-slate-800 text-slate-300 hover:bg-slate-700" : "bg-slate-100 text-slate-700"
+            className={`rounded-full px-4 py-2 text-xs font-semibold ${
+              dark ? "bg-white/10 text-neutral-200 hover:bg-white/15" : "bg-black/[0.05] text-slate-700 hover:bg-black/10"
             }`}
           >
             Cancel
@@ -266,17 +262,17 @@ export function ExportDialog({
             type="button"
             disabled={downloading}
             onClick={handleDownload}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-indigo-600/25 hover:from-indigo-500 hover:to-cyan-500 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-full bg-[#007AFF] px-5 py-2.5 text-xs font-semibold text-white shadow-md shadow-[#007AFF]/25 hover:bg-[#0070EB] disabled:opacity-45"
           >
             {downloading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Generating File...
+                Generating...
               </>
             ) : (
               <>
                 <Download className="h-4 w-4" />
-                Download Notes
+                Download File
               </>
             )}
           </button>

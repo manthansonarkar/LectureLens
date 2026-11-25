@@ -93,7 +93,7 @@ def extract(
     no_ocr: Annotated[bool, typer.Option("--no-ocr", help="Disable OCR text extraction.")] = False,
     no_transcript: Annotated[bool, typer.Option("--no-transcript", help="Disable YouTube transcript alignment.")] = False,
     ai_provider: Annotated[
-        str, typer.Option("--ai", help="Optional AI summary provider: off, ollama, openai, gemini.")
+        str, typer.Option("--ai", help="Optional summary provider: off, ollama, or openai.")
     ] = "off",
     ai_model: Annotated[str, typer.Option("--ai-model", help="Optional model name for AI notes.")] = "",
     vision_filter: Annotated[

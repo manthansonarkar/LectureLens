@@ -23,7 +23,7 @@ Educational lectures on YouTube (MIT OCW, 3Blue1Brown, NPTEL, Gate/JEE prep, cod
 - **Progressive Build & Handwriting Collapse:** Distinguishes *adding bullets or writing new equations onto the same page* (high forward retention `ret_a_to_b`) from *switching to a new slide* — automatically capturing the **completed, crispest frame** right before transition.
 - **Scroll-Aware 20–30% Overlap Mode:** When scrolling through PDFs, textbook pages, or code editors, two-stage vertical shift correlation waits until overlap with the previous screenshot drops to your chosen threshold (default **20–30% overlap**) so every screenshot brings ~70–80% brand-new material without missing lines.
 - **Fade & Blur Immunity:** Samples only from settled stability plateaus using 75th-percentile tile variance and picks the sharpest frame (Laplacian variance), eliminating blurry cross-dissolve frames.
-- **Searchable OCR + Spoken Transcript Alignment:** Runs offline **RapidOCR** across captured slides, matches YouTube captions (`json3`) to each slide's exact screen-time window, and optionally synthesizes bullet takeaways via local **Ollama**, **Gemini**, or **OpenAI**.
+- **Searchable OCR + Spoken Transcript Alignment:** Runs offline **RapidOCR** across captured slides, matches YouTube captions (`json3`) to each slide's exact screen-time window, and optionally adds short bullet notes via local **Ollama** or a custom OpenAI-compatible endpoint.
 - **Publication-Grade Exports:**
   - **PDF** (`Full Study Notes`, `Cornell Ruled Notes`, `2×1 Lecture Handout`, `2×2 Revision Grid`) with clickable YouTube timestamp deep-links (`&t=...s`)
   - **Microsoft Word (`.docx`)** editable study document with embedded high-res slides, hyperlinks, and shaded OCR callout blocks

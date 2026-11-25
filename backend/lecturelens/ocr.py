@@ -159,7 +159,7 @@ def list_ollama_models(timeout: float = 1.5) -> list[str]:
 
 
 def _call_llm(provider: str, model: str, api_key: str, prompt: str) -> str:
-    """Call configured local Ollama or cloud OpenAI/Gemini provider."""
+    """Call configured local Ollama or OpenAI-compatible provider."""
     if provider == "ollama":
         host = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434").rstrip("/")
         model_name = model or (list_ollama_models() or ["gemma3:4b"])[0]
@@ -186,22 +186,6 @@ def _call_llm(provider: str, model: str, api_key: str, prompt: str) -> str:
         )
         resp.raise_for_status()
         return str(resp.json()["choices"][0]["message"]["content"]).strip()
-
-    if provider == "gemini":
-        if not api_key:
-            return ""
-        model_name = model or "gemini-2.5-flash"
-        resp = httpx.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent",
-            params={"key": api_key},
-            json={"contents": [{"parts": [{"text": prompt}]}]},
-            timeout=30.0,
-        )
-        resp.raise_for_status()
-        cands = resp.json().get("candidates") or []
-        if cands:
-            parts = (cands[0].get("content") or {}).get("parts") or []
-            return "".join(str(p.get("text") or "") for p in parts).strip()
 
     return ""
 

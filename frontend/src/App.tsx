@@ -28,7 +28,8 @@ import {
 } from "./types";
 
 export default function App() {
-  const [dark, setDark] = useState(true);
+  // Default to crisp Daylight Frosted Glass (iPhone Liquid Glass style), with Dark Glass toggle
+  const [dark, setDark] = useState(false);
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [url, setUrl] = useState("");
   const [config, setConfig] = useState<ExtractionConfig>(DEFAULT_CONFIG);
@@ -70,66 +71,68 @@ export default function App() {
     };
   }, []);
 
-  const attachJobStream = useCallback((jobId: string) => {
-    unsubRef.current?.();
-    window.history.replaceState(null, "", `?job=${encodeURIComponent(jobId)}`);
+  const attachJobStream = useCallback(
+    (jobId: string) => {
+      unsubRef.current?.();
+      window.history.replaceState(null, "", `?job=${encodeURIComponent(jobId)}`);
 
-    const pollOnce = async () => {
-      try {
-        const latest = await getJob(jobId);
-        setJob(latest);
-        if (latest.metadata) setPreviewMeta(latest.metadata);
-        if (latest.status === "completed" || latest.status === "failed") {
-          setExtracting(false);
-          if (latest.error) setError(latest.error);
-          return true;
+      const pollOnce = async () => {
+        try {
+          const latest = await getJob(jobId);
+          setJob(latest);
+          if (latest.metadata) setPreviewMeta(latest.metadata);
+          if (latest.status === "completed" || latest.status === "failed") {
+            setExtracting(false);
+            if (latest.error) setError(latest.error);
+            return true;
+          }
+        } catch {
+          // ignore transient poll errors
         }
-      } catch {
-        // ignore transient poll errors
-      }
-      return false;
-    };
+        return false;
+      };
 
-    const unsub = subscribeJobEvents(
-      jobId,
-      (ev) => {
-        setJob((prev) =>
-          prev && prev.job_id === jobId
-            ? {
-                ...prev,
-                status: ev.status,
-                progress: ev.progress,
-                message: ev.message,
-                error: ev.error,
-                stats: ev.stats,
-              }
-            : {
-                job_id: jobId,
-                status: ev.status,
-                progress: ev.progress,
-                message: ev.message,
-                error: ev.error,
-                config,
-                metadata: previewMeta,
-                slides: [],
-                stats: ev.stats,
-                lecture_summary: "",
-              }
-        );
-        if (ev.status === "completed" || ev.status === "failed") {
-          void pollOnce();
+      const unsub = subscribeJobEvents(
+        jobId,
+        (ev) => {
+          setJob((prev) =>
+            prev && prev.job_id === jobId
+              ? {
+                  ...prev,
+                  status: ev.status,
+                  progress: ev.progress,
+                  message: ev.message,
+                  error: ev.error,
+                  stats: ev.stats,
+                }
+              : {
+                  job_id: jobId,
+                  status: ev.status,
+                  progress: ev.progress,
+                  message: ev.message,
+                  error: ev.error,
+                  config,
+                  metadata: previewMeta,
+                  slides: [],
+                  stats: ev.stats,
+                  lecture_summary: "",
+                }
+          );
+          if (ev.status === "completed" || ev.status === "failed") {
+            void pollOnce();
+          }
+        },
+        () => {
+          const timer = window.setInterval(async () => {
+            const done = await pollOnce();
+            if (done) window.clearInterval(timer);
+          }, 1200);
         }
-      },
-      () => {
-        // Fallback polling if SSE drops
-        const timer = window.setInterval(async () => {
-          const done = await pollOnce();
-          if (done) window.clearInterval(timer);
-        }, 1200);
-      }
-    );
-    unsubRef.current = unsub;
-  }, [config, previewMeta]);
+      );
+      unsubRef.current = unsub;
+    },
+    [config, previewMeta]
+  );
 
   const handleInspect = async (urlOverride?: string) => {
     const target = (urlOverride ?? url).trim();
@@ -229,82 +232,105 @@ export default function App() {
 
   return (
     <div
-      className={`min-h-screen transition-colors ${
-        dark
-          ? "bg-slate-950 bg-studio-grid text-slate-100"
-          : "bg-slate-50 bg-paper-grid text-slate-900"
+      className={`relative min-h-screen overflow-x-hidden transition-colors duration-300 ${
+        dark ? "bg-[#0B0C10] text-white" : "bg-[#ECF1F8] text-slate-900"
       }`}
     >
-      <Header dark={dark} onToggleTheme={() => setDark((d) => !d)} health={health} />
+      {/* Subtle Ambient Apple-style Wallpaper Gradient Depth Behind Frosted Glass */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div
+          className={`absolute -left-32 -top-28 h-[34rem] w-[34rem] rounded-full blur-[110px] transition-opacity ${
+            dark ? "bg-sky-500/18 opacity-75" : "bg-sky-300/45 opacity-90"
+          }`}
+        />
+        <div
+          className={`absolute -right-24 top-16 h-[30rem] w-[30rem] rounded-full blur-[110px] transition-opacity ${
+            dark ? "bg-blue-600/15 opacity-70" : "bg-blue-200/55 opacity-95"
+          }`}
+        />
+        <div
+          className={`absolute bottom-0 left-1/3 h-[28rem] w-[36rem] rounded-full blur-[120px] transition-opacity ${
+            dark ? "bg-teal-500/12 opacity-60" : "bg-emerald-200/40 opacity-85"
+          }`}
+        />
+      </div>
 
-      <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:py-8">
-        {error && (
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-400">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{error}</span>
+      <div className="relative z-10">
+        <Header dark={dark} onToggleTheme={() => setDark((d) => !d)} health={health} />
+
+        <main className="mx-auto max-w-6xl space-y-5 px-4 py-6 sm:px-6 lg:py-8">
+          {error && (
+            <div
+              className={`flex items-center justify-between gap-3 rounded-2xl border border-rose-500/35 bg-rose-500/10 px-4 py-3 text-sm backdrop-blur-xl ${
+                dark ? "text-rose-300" : "text-rose-700"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>{error}</span>
+              </div>
+              <button type="button" onClick={() => setError(null)}>
+                <X className="h-4 w-4" />
+              </button>
             </div>
-            <button type="button" onClick={() => setError(null)}>
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        )}
+          )}
 
-        <HeroInput
-          dark={dark}
-          url={url}
-          onUrlChange={setUrl}
-          onInspect={handleInspect}
-          onExtract={handleExtract}
-          onUploadFile={handleUploadFile}
-          inspecting={inspecting}
-          extracting={extracting}
-        />
-
-        {activeMeta && (
-          <VideoPreviewCard
+          <HeroInput
             dark={dark}
-            metadata={activeMeta}
-            excludeRegion={config.exclude_region}
-            onExcludeRegionChange={(region) => setConfig({ ...config, exclude_region: region })}
+            url={url}
+            onUrlChange={setUrl}
+            onInspect={handleInspect}
+            onExtract={handleExtract}
+            onUploadFile={handleUploadFile}
+            inspecting={inspecting}
+            extracting={extracting}
           />
-        )}
 
-        <ExtractionPanel
-          dark={dark}
-          config={config}
-          onChange={setConfig}
-          health={health}
-        />
+          {activeMeta && (
+            <VideoPreviewCard
+              dark={dark}
+              metadata={activeMeta}
+              excludeRegion={config.exclude_region}
+              onExcludeRegionChange={(region) => setConfig({ ...config, exclude_region: region })}
+            />
+          )}
 
-        {job && <PipelineConsole dark={dark} job={job} />}
-
-        {job && job.status === "completed" && (
-          <SlideStudio
+          <ExtractionPanel
             dark={dark}
-            job={job}
             config={config}
-            onConfigChange={setConfig}
-            onRefilter={handleRefilter}
-            onToggleSlide={handleToggleSlide}
-            onSaveNotes={handleSaveNotes}
-            onAddManualTimestamp={handleAddManualTimestamp}
-            onOpenExport={() => setExportOpen(true)}
-            busy={studioBusy}
+            onChange={setConfig}
+            health={health}
+          />
+
+          {job && <PipelineConsole dark={dark} job={job} />}
+
+          {job && job.status === "completed" && (
+            <SlideStudio
+              dark={dark}
+              job={job}
+              config={config}
+              onConfigChange={setConfig}
+              onRefilter={handleRefilter}
+              onToggleSlide={handleToggleSlide}
+              onSaveNotes={handleSaveNotes}
+              onAddManualTimestamp={handleAddManualTimestamp}
+              onOpenExport={() => setExportOpen(true)}
+              busy={studioBusy}
+            />
+          )}
+        </main>
+
+        {job && activeMeta && (
+          <ExportDialog
+            dark={dark}
+            open={exportOpen}
+            onClose={() => setExportOpen(false)}
+            jobId={job.job_id}
+            defaultTitle={activeMeta.title}
+            slidesCount={job.slides.filter((s) => s.kept).length}
           />
         )}
-      </main>
-
-      {job && activeMeta && (
-        <ExportDialog
-          dark={dark}
-          open={exportOpen}
-          onClose={() => setExportOpen(false)}
-          jobId={job.job_id}
-          defaultTitle={activeMeta.title}
-          slidesCount={job.slides.filter((s) => s.kept).length}
-        />
-      )}
+      </div>
     </div>
   );
 }

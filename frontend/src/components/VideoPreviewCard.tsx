@@ -33,8 +33,8 @@ export function VideoPreviewCard({
 
   return (
     <div
-      className={`rounded-2xl border p-4 sm:p-5 transition-colors ${
-        dark ? "border-slate-800 bg-slate-900/75" : "border-slate-200 bg-white shadow-sm"
+      className={`rounded-[24px] p-4 sm:p-5 transition-all ${
+        dark ? "glass-dark" : "glass-light"
       }`}
     >
       <div className="flex flex-col gap-5 lg:flex-row">
@@ -68,7 +68,7 @@ export function VideoPreviewCard({
                 setDragStart(null);
                 setDraftBox(null);
               }}
-              className="relative aspect-video cursor-crosshair select-none overflow-hidden rounded-xl border border-slate-700/50 bg-black"
+              className="relative aspect-video cursor-crosshair select-none overflow-hidden rounded-2xl border border-black/10 bg-black shadow-sm"
             >
               <img
                 src={metadata.thumbnail_url}
@@ -86,25 +86,25 @@ export function VideoPreviewCard({
                   }}
                   className="pointer-events-none absolute border-2 border-dashed border-rose-400 bg-rose-500/25"
                 >
-                  <span className="absolute left-1 top-1 rounded bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  <span className="absolute left-1.5 top-1.5 rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-semibold text-white">
                     Ignored Zone
                   </span>
                 </div>
               )}
-              <div className="pointer-events-none absolute bottom-2 right-2 rounded-md bg-black/75 px-2 py-0.5 font-mono text-xs font-semibold text-white">
+              <div className="pointer-events-none absolute bottom-2 right-2 rounded-full bg-black/65 px-2.5 py-0.5 font-mono text-xs font-medium text-white backdrop-blur-md">
                 {formatDuration(metadata.duration)}
               </div>
             </div>
             <div className="mt-2 flex items-center justify-between text-[11px]">
-              <span className={`inline-flex items-center gap-1 ${dark ? "text-slate-400" : "text-slate-500"}`}>
+              <span className={`inline-flex items-center gap-1 ${dark ? "text-neutral-400" : "text-slate-500"}`}>
                 <Crop className="h-3 w-3" />
-                Drag on preview to manually mask a webcam/chat region
+                Drag on preview to mask a webcam or chat box
               </span>
               {excludeRegion && (
                 <button
                   type="button"
                   onClick={() => onExcludeRegionChange(null)}
-                  className="inline-flex items-center gap-1 font-semibold text-rose-400 hover:text-rose-300"
+                  className="inline-flex items-center gap-1 font-semibold text-rose-500 hover:text-rose-400"
                 >
                   <Eraser className="h-3 w-3" />
                   Clear
@@ -118,64 +118,66 @@ export function VideoPreviewCard({
           <div>
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <span
-                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-medium ${
-                  dark ? "bg-slate-800 text-slate-300" : "bg-slate-100 text-slate-700"
+                className={`inline-flex items-center gap-1 rounded-full px-3 py-0.5 font-medium ${
+                  dark ? "bg-white/10 text-neutral-200" : "bg-black/[0.05] text-slate-700"
                 }`}
               >
                 <User className="h-3 w-3" />
                 {metadata.channel}
               </span>
               <span
-                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-medium ${
-                  dark ? "bg-slate-800 text-slate-300" : "bg-slate-100 text-slate-700"
+                className={`inline-flex items-center gap-1 rounded-full px-3 py-0.5 font-medium ${
+                  dark ? "bg-white/10 text-neutral-200" : "bg-black/[0.05] text-slate-700"
                 }`}
               >
                 <Clock className="h-3 w-3" />
                 {formatDuration(metadata.duration)}
               </span>
               <span
-                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-medium ${
+                className={`inline-flex items-center gap-1 rounded-full px-3 py-0.5 font-medium ${
                   metadata.has_transcript
                     ? dark
                       ? "bg-emerald-500/15 text-emerald-300"
-                      : "bg-emerald-50 text-emerald-700"
+                      : "bg-emerald-500/10 text-emerald-700"
                     : dark
-                      ? "bg-slate-800 text-slate-400"
-                      : "bg-slate-100 text-slate-500"
+                      ? "bg-white/10 text-neutral-400"
+                      : "bg-black/[0.05] text-slate-500"
                 }`}
               >
                 <Captions className="h-3 w-3" />
                 {metadata.has_transcript
-                  ? `Captions Ready (${metadata.transcript_language})`
-                  : "No Captions Found"}
+                  ? `Captions (${metadata.transcript_language})`
+                  : "No Captions"}
               </span>
             </div>
 
-            <h3 className="mt-2.5 text-lg font-bold leading-snug">{metadata.title}</h3>
+            <h3 className="mt-2.5 text-lg font-semibold leading-snug tracking-tight">
+              {metadata.title}
+            </h3>
           </div>
 
           {metadata.chapters.length > 0 && (
             <div>
               <p
-                className={`mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${
-                  dark ? "text-slate-400" : "text-slate-500"
+                className={`mb-1.5 flex items-center gap-1.5 text-xs font-semibold ${
+                  dark ? "text-neutral-400" : "text-slate-500"
                 }`}
               >
                 <ListVideo className="h-3.5 w-3.5" />
-                {metadata.chapters.length} Chapters Detected
+                {metadata.chapters.length} Chapters
               </p>
               <div className="flex max-h-24 flex-wrap gap-1.5 overflow-y-auto pr-1">
                 {metadata.chapters.map((ch, idx) => (
                   <span
                     key={`${ch.start_time}-${idx}`}
-                    className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[11px] font-medium ${
+                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${
                       dark
-                        ? "border-slate-800 bg-slate-950/80 text-slate-300"
-                        : "border-slate-200 bg-slate-50 text-slate-700"
+                        ? "bg-white/[0.07] text-neutral-300"
+                        : "bg-black/[0.04] text-slate-700"
                     }`}
                   >
-                    <span className="font-mono text-indigo-400">{formatDuration(ch.start_time)}</span>
-                    <span className="truncate max-w-[180px]">{ch.title}</span>
+                    <span className="font-mono text-[#007AFF]">{formatDuration(ch.start_time)}</span>
+                    <span className="max-w-[180px] truncate">{ch.title}</span>
                   </span>
                 ))}
               </div>

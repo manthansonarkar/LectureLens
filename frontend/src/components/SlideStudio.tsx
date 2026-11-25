@@ -13,7 +13,6 @@ import {
   Plus,
   RefreshCw,
   Search,
-  Sparkles,
   StickyNote,
   X,
 } from "lucide-react";
@@ -119,79 +118,86 @@ export function SlideStudio({
   };
 
   const reasonLabel = (r: string) => {
-    if (r === "progressive_step") return "Progressive Step";
-    if (r === "erased_step") return "Erased Board Step";
-    if (r === "ai_filtered") return "AI Vision Filtered";
-    if (r === "duplicate") return "Duplicate / Overlap";
-    if (r === "global_repeat") return "Revisited Slide";
-    if (r === "low_content") return "Blank / Empty";
+    if (r === "progressive_step") return "Build Step";
+    if (r === "erased_step") return "Erased Step";
+    if (r === "ai_filtered") return "Filtered Out";
+    if (r === "duplicate") return "Duplicate";
+    if (r === "global_repeat") return "Revisited";
+    if (r === "low_content") return "Blank Frame";
     if (r === "manual_excluded") return "Excluded";
-    if (r === "manual_added") return "Manual Capture";
+    if (r === "manual_added") return "Added";
     return "Kept";
   };
 
   return (
     <section className="space-y-4">
-      {/* Studio Toolbar */}
+      {/* Frosted Studio Toolbar */}
       <div
-        className={`rounded-2xl border p-4 transition-colors ${
-          dark ? "border-slate-800 bg-slate-900/80" : "border-slate-200 bg-white shadow-sm"
+        className={`rounded-[24px] p-4 transition-all ${
+          dark ? "glass-dark" : "glass-light"
         }`}
       >
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-3.5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-2">
-            {(
-              [
-                ["kept", `Kept (${keptSlides.length})`],
-                ["filtered", `Filtered (${filteredSlides.length})`],
-                ["all", `All (${job.slides.length})`],
-              ] as const
-            ).map(([tab, label]) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setFilterTab(tab)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
-                  filterTab === tab
-                    ? "bg-indigo-600 text-white shadow-sm"
-                    : dark
-                      ? "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+            <div
+              className={`inline-flex rounded-full p-1 ${
+                dark ? "bg-white/10" : "bg-black/[0.06]"
+              }`}
+            >
+              {(
+                [
+                  ["kept", `Kept (${keptSlides.length})`],
+                  ["filtered", `Filtered (${filteredSlides.length})`],
+                  ["all", `All (${job.slides.length})`],
+                ] as const
+              ).map(([tab, label]) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setFilterTab(tab)}
+                  className={`rounded-full px-3 py-1 text-xs font-semibold transition-all ${
+                    filterTab === tab
+                      ? dark
+                        ? "bg-white/20 text-white shadow-sm"
+                        : "bg-white text-slate-900 shadow-sm"
+                      : dark
+                        ? "text-neutral-400 hover:text-white"
+                        : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
 
-            <div className="relative ml-0 flex-1 sm:ml-2 sm:w-64 sm:flex-none">
+            <div className="relative flex-1 sm:w-64 sm:flex-none">
               <Search
                 className={`pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${
-                  dark ? "text-slate-500" : "text-slate-400"
+                  dark ? "text-neutral-500" : "text-slate-400"
                 }`}
               />
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search OCR text, notes, topics..."
-                className={`w-full rounded-lg border py-1.5 pl-8 pr-3 text-xs outline-none ${
+                placeholder="Search slide text or notes..."
+                className={`w-full rounded-full border py-1.5 pl-8 pr-3 text-xs outline-none ${
                   dark
-                    ? "border-slate-700 bg-slate-950 text-slate-200 placeholder-slate-500 focus:border-indigo-500"
-                    : "border-slate-300 bg-slate-50 text-slate-800 placeholder-slate-400 focus:border-indigo-500"
+                    ? "border-white/15 bg-black/30 text-white placeholder-neutral-500 focus:border-[#0A84FF]"
+                    : "border-black/10 bg-white/75 text-slate-800 placeholder-slate-400 focus:border-[#007AFF]"
                 }`}
               />
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* Instant Re-Filter Sensitivity */}
+          <div className="flex flex-wrap items-center gap-2">
             <div
-              className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 ${
-                dark ? "border-slate-800 bg-slate-950/70" : "border-slate-200 bg-slate-50"
+              className={`flex items-center gap-2 rounded-full px-3 py-1.5 ${
+                dark ? "glass-dark-subtle" : "glass-light-subtle"
               }`}
             >
-              <Filter className="h-3.5 w-3.5 text-indigo-400" />
-              <span className="text-[11px] font-semibold">Max Sim:</span>
+              <Filter className="h-3.5 w-3.5 text-[#007AFF]" />
+              <span className="text-[11px] font-semibold">Max Sim</span>
               <input
                 type="range"
                 min={15}
@@ -200,43 +206,42 @@ export function SlideStudio({
                 onChange={(e) =>
                   onConfigChange({ ...config, max_similarity: Number(e.target.value) / 100 })
                 }
-                className="w-20 accent-indigo-500"
+                className="ios-slider w-20 bg-black/15"
               />
-              <span className="w-9 font-mono text-xs font-bold text-indigo-400">
+              <span className="w-8 font-mono text-xs font-semibold text-[#007AFF]">
                 {Math.round(config.max_similarity * 100)}%
               </span>
               <button
                 type="button"
                 disabled={busy}
                 onClick={onRefilter}
-                className="inline-flex items-center gap-1 rounded-md bg-indigo-600/20 px-2 py-1 text-[11px] font-bold text-indigo-400 transition-colors hover:bg-indigo-600 hover:text-white disabled:opacity-50"
+                className="inline-flex items-center gap-1 rounded-full bg-[#007AFF]/12 px-2.5 py-0.5 text-[11px] font-semibold text-[#007AFF] transition-colors hover:bg-[#007AFF] hover:text-white disabled:opacity-45"
               >
                 <RefreshCw className={`h-3 w-3 ${busy ? "animate-spin" : ""}`} />
-                Re-Filter
+                Apply
               </button>
             </div>
 
-            {/* Capture Manual Timestamp */}
             <form onSubmit={handleAddTimestamp} className="flex items-center gap-1.5">
               <input
                 type="text"
                 value={manualTs}
                 onChange={(e) => setManualTs(e.target.value)}
                 placeholder="mm:ss"
-                className={`w-20 rounded-lg border px-2.5 py-1.5 font-mono text-xs outline-none ${
+                className={`w-18 rounded-full border px-3 py-1.5 font-mono text-xs outline-none ${
                   dark
-                    ? "border-slate-700 bg-slate-950 text-slate-200 placeholder-slate-500"
-                    : "border-slate-300 bg-slate-50 text-slate-800"
+                    ? "border-white/15 bg-black/30 text-white placeholder-neutral-500"
+                    : "border-black/10 bg-white/80 text-slate-800"
                 }`}
               />
               <button
                 type="submit"
                 disabled={busy || !manualTs.trim()}
-                title="Capture frame at exact timestamp"
-                className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
+                title="Capture frame at timestamp"
+                className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-45 ${
                   dark
-                    ? "border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"
-                    : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                    ? "bg-white/10 text-white hover:bg-white/15"
+                    : "bg-white/80 text-slate-800 ring-1 ring-black/10 hover:bg-white"
                 }`}
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -244,14 +249,13 @@ export function SlideStudio({
               </button>
             </form>
 
-            {/* Primary Export CTA */}
             <button
               type="button"
               onClick={onOpenExport}
               disabled={keptSlides.length === 0}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-emerald-600/20 transition-all hover:from-emerald-400 hover:to-cyan-500 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-full bg-[#007AFF] px-4 py-2 text-xs font-semibold text-white shadow-md shadow-[#007AFF]/25 transition-all hover:bg-[#0070EB] disabled:opacity-45"
             >
-              <Download className="h-4 w-4" />
+              <Download className="h-3.5 w-3.5" />
               Export PDF / DOCX
             </button>
           </div>
@@ -259,26 +263,21 @@ export function SlideStudio({
 
         {job.lecture_summary && (
           <div
-            className={`mt-4 rounded-xl border p-3.5 text-xs leading-relaxed ${
-              dark
-                ? "border-indigo-500/30 bg-indigo-500/10 text-indigo-100"
-                : "border-indigo-200 bg-indigo-50/70 text-slate-800"
+            className={`mt-4 rounded-2xl p-3.5 text-xs leading-relaxed ${
+              dark ? "glass-dark-subtle text-neutral-200" : "glass-light-subtle text-slate-800"
             }`}
           >
-            <div className="mb-1 flex items-center gap-1.5 font-bold text-indigo-400">
-              <Sparkles className="h-3.5 w-3.5" />
-              AI Executive Lecture Summary
-            </div>
+            <div className="mb-1 font-semibold text-[#007AFF]">Lecture Overview</div>
             <p className="whitespace-pre-line">{job.lecture_summary}</p>
           </div>
         )}
       </div>
 
-      {/* Slides Grid */}
+      {/* Slides Gallery */}
       {visibleSlides.length === 0 ? (
         <div
-          className={`rounded-2xl border p-12 text-center ${
-            dark ? "border-slate-800 bg-slate-900/50 text-slate-400" : "border-slate-200 bg-white text-slate-500"
+          className={`rounded-[24px] p-12 text-center text-sm ${
+            dark ? "glass-dark text-neutral-400" : "glass-light text-slate-500"
           }`}
         >
           No slides match the current filter.
@@ -293,49 +292,49 @@ export function SlideStudio({
             return (
               <article
                 key={slide.id}
-                className={`group flex flex-col overflow-hidden rounded-2xl border transition-all ${
+                className={`group flex flex-col overflow-hidden rounded-[22px] transition-all ${
                   slide.kept
                     ? dark
-                      ? "border-slate-800 bg-slate-900/85 hover:border-indigo-500/50"
-                      : "border-slate-200 bg-white shadow-sm hover:border-indigo-300"
+                      ? "glass-dark hover:ring-1 hover:ring-[#0A84FF]/60"
+                      : "glass-light hover:shadow-lg"
                     : dark
-                      ? "border-slate-800/60 bg-slate-950/60 opacity-75"
-                      : "border-slate-200/80 bg-slate-50 opacity-80"
+                      ? "glass-dark-subtle opacity-70"
+                      : "glass-light-subtle opacity-75"
                 }`}
               >
                 <div
                   onClick={() => setLightboxId(slide.id)}
-                  className="relative aspect-video cursor-zoom-in overflow-hidden bg-black"
+                  className="relative aspect-video cursor-zoom-in overflow-hidden bg-neutral-950"
                 >
                   <img
                     src={slide.thumb_url}
                     alt={`Slide ${slide.index || slide.timestamp_label}`}
                     loading="lazy"
-                    className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.02]"
+                    className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.015]"
                   />
 
                   <div className="absolute left-2.5 top-2.5 flex items-center gap-1.5">
                     <span
-                      className={`rounded-md px-2 py-0.5 font-mono text-xs font-bold shadow ${
+                      className={`rounded-full px-2.5 py-0.5 font-mono text-[11px] font-semibold backdrop-blur-md ${
                         slide.kept
-                          ? "bg-indigo-600 text-white"
-                          : "bg-slate-800/90 text-slate-300"
+                          ? "bg-[#007AFF] text-white shadow-sm"
+                          : "bg-black/65 text-neutral-200"
                       }`}
                     >
                       {slide.kept ? `#${String(slide.index).padStart(2, "0")}` : reasonLabel(slide.filter_reason)}
                     </span>
-                    <span className="rounded-md bg-black/75 px-2 py-0.5 font-mono text-xs font-semibold text-white">
+                    <span className="rounded-full bg-black/55 px-2.5 py-0.5 font-mono text-[11px] font-medium text-white backdrop-blur-md">
                       {slide.timestamp_label}
                     </span>
                   </div>
 
                   {slide.similarity_to_prev > 0 && (
                     <span
-                      title="Visual similarity compared to previous kept screenshot"
-                      className={`absolute bottom-2 right-2 rounded-md px-2 py-0.5 font-mono text-[11px] font-semibold backdrop-blur-md ${
+                      title="Visual overlap compared to previous kept slide"
+                      className={`absolute bottom-2 right-2 rounded-full px-2.5 py-0.5 font-mono text-[11px] font-semibold backdrop-blur-md ${
                         simPct <= 30
-                          ? "bg-emerald-950/80 text-emerald-300 ring-1 ring-emerald-500/40"
-                          : "bg-black/75 text-slate-200"
+                          ? "bg-emerald-500/85 text-white"
+                          : "bg-black/60 text-neutral-100"
                       }`}
                     >
                       {simPct}% sim
@@ -347,13 +346,13 @@ export function SlideStudio({
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       {slide.chapter_title ? (
-                        <p className="truncate text-xs font-semibold text-indigo-400">
+                        <p className="truncate text-xs font-semibold text-[#007AFF]">
                           {slide.chapter_title}
                         </p>
                       ) : (
-                        <p className={`text-xs ${dark ? "text-slate-400" : "text-slate-500"}`}>
+                        <p className={`text-xs ${dark ? "text-neutral-400" : "text-slate-500"}`}>
                           {slide.width}&times;{slide.height} &bull;{" "}
-                          {Math.round(slide.end_time - slide.start_time)}s on screen
+                          {Math.round(slide.end_time - slide.start_time)}s
                         </p>
                       )}
                     </div>
@@ -364,11 +363,11 @@ export function SlideStudio({
                           href={slide.youtube_jump_url}
                           target="_blank"
                           rel="noreferrer"
-                          title="Open exact second on YouTube"
-                          className={`rounded-lg p-1.5 transition-colors ${
+                          title="Jump to YouTube timestamp"
+                          className={`rounded-full p-1.5 transition-colors ${
                             dark
-                              ? "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white"
-                              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                              ? "bg-white/10 text-neutral-200 hover:bg-white/20"
+                              : "bg-black/[0.05] text-slate-600 hover:bg-black/10"
                           }`}
                         >
                           <ExternalLink className="h-3.5 w-3.5" />
@@ -378,23 +377,23 @@ export function SlideStudio({
                         type="button"
                         disabled={busy}
                         onClick={() => onToggleSlide(slide)}
-                        className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${
                           slide.kept
                             ? dark
-                              ? "bg-slate-800 text-slate-300 hover:bg-rose-500/20 hover:text-rose-300"
-                              : "bg-slate-100 text-slate-700 hover:bg-rose-50 hover:text-rose-600"
-                            : "bg-emerald-600 text-white hover:bg-emerald-500"
+                              ? "bg-white/10 text-neutral-200 hover:bg-rose-500/20 hover:text-rose-300"
+                              : "bg-black/[0.05] text-slate-700 hover:bg-rose-50 hover:text-rose-600"
+                            : "bg-[#34C759] text-white hover:bg-[#2DB84E]"
                         }`}
                       >
                         {slide.kept ? (
                           <>
                             <EyeOff className="h-3.5 w-3.5" />
-                            Exclude
+                            Hide
                           </>
                         ) : (
                           <>
                             <Eye className="h-3.5 w-3.5" />
-                            Restore
+                            Keep
                           </>
                         )}
                       </button>
@@ -403,18 +402,18 @@ export function SlideStudio({
 
                   {(slide.ocr_text || slide.transcript_text) && (
                     <div
-                      className={`max-h-24 overflow-y-auto rounded-lg p-2.5 text-[11px] leading-relaxed ${
-                        dark ? "bg-slate-950/70 text-slate-300" : "bg-slate-50 text-slate-700"
+                      className={`max-h-24 overflow-y-auto rounded-xl p-2.5 text-[11px] leading-relaxed ${
+                        dark ? "bg-black/30 text-neutral-300" : "bg-black/[0.035] text-slate-700"
                       }`}
                     >
                       {slide.ocr_text && (
                         <p className="mb-1 flex items-start gap-1">
-                          <FileText className="mt-0.5 h-3 w-3 shrink-0 text-cyan-400" />
+                          <FileText className="mt-0.5 h-3 w-3 shrink-0 text-[#007AFF]" />
                           <span className="line-clamp-3 font-mono">{slide.ocr_text}</span>
                         </p>
                       )}
                       {slide.transcript_text && (
-                        <p className={`line-clamp-2 ${dark ? "text-slate-400" : "text-slate-500"}`}>
+                        <p className={`line-clamp-2 ${dark ? "text-neutral-400" : "text-slate-500"}`}>
                           {slide.transcript_text}
                         </p>
                       )}
@@ -425,7 +424,7 @@ export function SlideStudio({
                     <div className="mt-auto flex items-center gap-1.5 pt-1">
                       <StickyNote
                         className={`h-3.5 w-3.5 shrink-0 ${
-                          dark ? "text-slate-500" : "text-slate-400"
+                          dark ? "text-neutral-500" : "text-slate-400"
                         }`}
                       />
                       <input
@@ -442,18 +441,18 @@ export function SlideStudio({
                             onSaveNotes(slide.id, draftNote);
                           }
                         }}
-                        placeholder="Add study note..."
-                        className={`w-full rounded-md border px-2 py-1 text-xs outline-none ${
+                        placeholder="Add personal note..."
+                        className={`w-full rounded-full border px-3 py-1 text-xs outline-none ${
                           dark
-                            ? "border-slate-800 bg-slate-950/80 text-slate-200 placeholder-slate-600 focus:border-indigo-500"
-                            : "border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400 focus:border-indigo-500"
+                            ? "border-white/10 bg-black/25 text-white placeholder-neutral-500 focus:border-[#0A84FF]"
+                            : "border-black/10 bg-white/70 text-slate-800 placeholder-slate-400 focus:border-[#007AFF]"
                         }`}
                       />
                       {noteDirty && (
                         <button
                           type="button"
                           onClick={() => onSaveNotes(slide.id, draftNote)}
-                          className="rounded-md bg-indigo-600 p-1 text-white hover:bg-indigo-500"
+                          className="rounded-full bg-[#007AFF] p-1 text-white"
                         >
                           <Check className="h-3.5 w-3.5" />
                         </button>
@@ -467,26 +466,30 @@ export function SlideStudio({
         </div>
       )}
 
-      {/* Lightbox Inspector Modal */}
+      {/* Frosted Lightbox Modal */}
       {activeSlide && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 backdrop-blur-sm sm:p-6"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-3 backdrop-blur-xl sm:p-6"
           onClick={() => setLightboxId(null)}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className={`flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border ${
-              dark ? "border-slate-700 bg-slate-900 text-slate-100" : "border-slate-300 bg-white text-slate-900"
+            className={`flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[26px] ${
+              dark ? "glass-dark text-white" : "glass-light text-slate-900"
             }`}
           >
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-700/40 px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/10 px-5 py-3.5">
               <div className="flex items-center gap-2.5">
-                <span className="rounded-md bg-indigo-600 px-2.5 py-0.5 font-mono text-xs font-bold text-white">
+                <span className="rounded-full bg-[#007AFF] px-3 py-0.5 font-mono text-xs font-semibold text-white">
                   {activeSlide.kept ? `Slide #${activeSlide.index}` : reasonLabel(activeSlide.filter_reason)}
                 </span>
                 <span className="font-mono text-xs font-semibold">{activeSlide.timestamp_label}</span>
                 {activeSlide.similarity_to_prev > 0 && (
-                  <span className="rounded bg-emerald-500/15 px-2 py-0.5 font-mono text-xs font-semibold text-emerald-400">
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 font-mono text-xs font-semibold ${
+                      dark ? "bg-[#34C759]/20 text-emerald-300" : "bg-[#34C759]/15 text-emerald-700"
+                    }`}
+                  >
                     {Math.round(activeSlide.similarity_to_prev * 100)}% similar to previous
                   </span>
                 )}
@@ -497,23 +500,25 @@ export function SlideStudio({
                   <button
                     type="button"
                     onClick={() => setComparePrev((v) => !v)}
-                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
                       comparePrev
-                        ? "bg-indigo-600 text-white"
+                        ? "bg-[#007AFF] text-white"
                         : dark
-                          ? "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                          : "bg-slate-100 text-slate-700"
+                          ? "bg-white/10 text-neutral-200 hover:bg-white/15"
+                          : "bg-black/[0.06] text-slate-700 hover:bg-black/10"
                     }`}
                   >
                     <Columns2 className="h-3.5 w-3.5" />
-                    Compare vs Prev
+                    Compare
                   </button>
                 )}
                 <button
                   type="button"
                   disabled={lightboxIndex <= 0}
                   onClick={() => setLightboxId(visibleSlides[lightboxIndex - 1].id)}
-                  className="rounded-lg bg-slate-800 p-1.5 text-slate-200 disabled:opacity-40"
+                  className={`rounded-full p-1.5 disabled:opacity-35 ${
+                    dark ? "bg-white/10 text-white" : "bg-black/[0.06] text-slate-800"
+                  }`}
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
@@ -521,44 +526,48 @@ export function SlideStudio({
                   type="button"
                   disabled={lightboxIndex + 1 >= visibleSlides.length}
                   onClick={() => setLightboxId(visibleSlides[lightboxIndex + 1].id)}
-                  className="rounded-lg bg-slate-800 p-1.5 text-slate-200 disabled:opacity-40"
+                  className={`rounded-full p-1.5 disabled:opacity-35 ${
+                    dark ? "bg-white/10 text-white" : "bg-black/[0.06] text-slate-800"
+                  }`}
                 >
                   <ArrowRight className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
                   onClick={() => setLightboxId(null)}
-                  className="rounded-lg bg-slate-800 p-1.5 text-slate-200 hover:bg-rose-600"
+                  className={`rounded-full p-1.5 ${
+                    dark ? "bg-white/10 text-white hover:bg-rose-500" : "bg-black/[0.06] text-slate-800 hover:bg-rose-500 hover:text-white"
+                  }`}
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 overflow-y-auto p-5">
               <div className={`grid gap-4 ${comparePrev && prevKeptSlide ? "md:grid-cols-2" : "grid-cols-1"}`}>
                 {comparePrev && prevKeptSlide && (
                   <div>
-                    <p className="mb-1.5 font-mono text-xs font-semibold text-slate-400">
+                    <p className={`mb-1.5 font-mono text-xs font-semibold ${dark ? "text-neutral-400" : "text-slate-500"}`}>
                       Previous: Slide #{prevKeptSlide.index} ({prevKeptSlide.timestamp_label})
                     </p>
                     <img
                       src={prevKeptSlide.image_url}
                       alt="Previous slide"
-                      className="max-h-[60vh] w-full rounded-xl border border-slate-700/60 bg-black object-contain"
+                      className="max-h-[60vh] w-full rounded-2xl border border-black/10 bg-black object-contain"
                     />
                   </div>
                 )}
                 <div>
                   {comparePrev && (
-                    <p className="mb-1.5 font-mono text-xs font-semibold text-indigo-400">
+                    <p className="mb-1.5 font-mono text-xs font-semibold text-[#007AFF]">
                       Current: Slide #{activeSlide.index} ({activeSlide.timestamp_label})
                     </p>
                   )}
                   <img
                     src={activeSlide.image_url}
                     alt={`Slide ${activeSlide.index}`}
-                    className="max-h-[62vh] w-full rounded-xl border border-slate-700/60 bg-black object-contain"
+                    className="max-h-[62vh] w-full rounded-2xl border border-black/10 bg-black object-contain"
                   />
                 </div>
               </div>
@@ -567,11 +576,11 @@ export function SlideStudio({
                 <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                   {activeSlide.ocr_text && (
                     <div
-                      className={`rounded-xl border p-3 text-xs ${
-                        dark ? "border-slate-800 bg-slate-950" : "border-slate-200 bg-slate-50"
+                      className={`rounded-2xl p-3.5 text-xs ${
+                        dark ? "glass-dark-subtle" : "glass-light-subtle"
                       }`}
                     >
-                      <h4 className="mb-1.5 font-bold text-cyan-400">Slide Text (OCR)</h4>
+                      <h4 className="mb-1.5 font-semibold text-[#007AFF]">Extracted Slide Text</h4>
                       <pre className="whitespace-pre-wrap font-mono leading-relaxed">
                         {activeSlide.ocr_text}
                       </pre>
@@ -579,11 +588,11 @@ export function SlideStudio({
                   )}
                   {activeSlide.transcript_text && (
                     <div
-                      className={`rounded-xl border p-3 text-xs ${
-                        dark ? "border-slate-800 bg-slate-950" : "border-slate-200 bg-slate-50"
+                      className={`rounded-2xl p-3.5 text-xs ${
+                        dark ? "glass-dark-subtle" : "glass-light-subtle"
                       }`}
                     >
-                      <h4 className="mb-1.5 font-bold text-emerald-400">Lecturer Explanation</h4>
+                      <h4 className="mb-1.5 font-semibold text-[#34C759]">Spoken Captions</h4>
                       <p className="leading-relaxed">{activeSlide.transcript_text}</p>
                     </div>
                   )}

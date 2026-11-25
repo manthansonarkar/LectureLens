@@ -42,7 +42,7 @@ class ExtractionConfig(BaseModel):
     ollama_vision_filter: bool = False
     vision_model: str = ""
     cleanup_video: bool = False
-    ai_notes_provider: Literal["off", "ollama", "openai", "gemini"] = "off"
+    ai_notes_provider: Literal["off", "ollama", "openai"] = "off"
     ai_model: str = ""
     ai_api_key: str = ""
     video_quality: Literal["720p", "1080p", "best"] = "1080p"

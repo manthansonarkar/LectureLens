@@ -1,7 +1,7 @@
 export type ExtractionPreset = "smart" | "strict_overlap" | "detailed";
 export type ExportFormat = "pdf" | "docx" | "markdown_zip" | "images_zip";
 export type PdfLayout = "study_full" | "cornell_notes" | "handout_2x1" | "grid_2x2";
-export type AIProvider = "off" | "ollama" | "openai" | "gemini";
+export type AIProvider = "off" | "ollama" | "openai";
 
 export interface ExtractionConfig {
   preset: ExtractionPreset;

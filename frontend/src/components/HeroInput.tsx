@@ -18,8 +18,8 @@ const SAMPLE_LECTURES = [
     url: "https://www.youtube.com/watch?v=aircAruvnKk",
   },
   {
-    label: "MIT OCW: Intro to Algorithms",
-    url: "https://www.youtube.com/watch?v=ZA-tUyM_y7s",
+    label: "Reservoir Geomechanics (8m)",
+    url: "https://www.youtube.com/watch?v=-1YVWlYPR1c",
   },
 ];
 
@@ -37,35 +37,38 @@ export function HeroInput({
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const cardBg = dark
-    ? "border-slate-800 bg-slate-900/80 shadow-2xl shadow-black/40"
-    : "border-slate-200 bg-white shadow-xl shadow-slate-200/60";
-
   return (
-    <section className={`rounded-2xl border p-5 sm:p-7 backdrop-blur-xl transition-all ${cardBg}`}>
+    <section
+      className={`rounded-[26px] p-5 sm:p-7 transition-all ${
+        dark ? "glass-dark" : "glass-light"
+      }`}
+    >
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
-            Capture Every Slide &amp; Page Automatically
+          <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+            Capture Every Lecture Slide &amp; Page
           </h2>
-          <p className={`mt-1 text-sm ${dark ? "text-slate-400" : "text-slate-600"}`}>
-            Ignores webcam motion &amp; blurry fades, collapses progressive board writing into finished pages, and exports crisp PDF &amp; Word notes.
+          <p className={`mt-1 text-sm ${dark ? "text-neutral-400" : "text-slate-600"}`}>
+            Paste a YouTube lecture or drop a video file to save clean, deduplicated screenshots as PDF or Word notes.
           </p>
         </div>
 
+        {/* iOS Segmented Control */}
         <div
-          className={`inline-flex self-start rounded-xl p-1 ${
-            dark ? "bg-slate-950 ring-1 ring-slate-800" : "bg-slate-100 ring-1 ring-slate-200"
+          className={`inline-flex self-start rounded-full p-1 ${
+            dark ? "bg-white/10 ring-1 ring-white/10" : "bg-black/[0.06]"
           }`}
         >
           <button
             type="button"
             onClick={() => setSourceTab("youtube")}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+            className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all ${
               sourceTab === "youtube"
-                ? "bg-indigo-600 text-white shadow-sm"
+                ? dark
+                  ? "bg-white/20 text-white shadow-sm"
+                  : "bg-white text-slate-900 shadow-sm"
                 : dark
-                  ? "text-slate-400 hover:text-slate-200"
+                  ? "text-neutral-400 hover:text-white"
                   : "text-slate-600 hover:text-slate-900"
             }`}
           >
@@ -75,11 +78,13 @@ export function HeroInput({
           <button
             type="button"
             onClick={() => setSourceTab("upload")}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+            className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all ${
               sourceTab === "upload"
-                ? "bg-indigo-600 text-white shadow-sm"
+                ? dark
+                  ? "bg-white/20 text-white shadow-sm"
+                  : "bg-white text-slate-900 shadow-sm"
                 : dark
-                  ? "text-slate-400 hover:text-slate-200"
+                  ? "text-neutral-400 hover:text-white"
                   : "text-slate-600 hover:text-slate-900"
             }`}
           >
@@ -96,12 +101,12 @@ export function HeroInput({
               e.preventDefault();
               onExtract();
             }}
-            className="flex flex-col gap-3 sm:flex-row"
+            className="flex flex-col gap-2.5 sm:flex-row"
           >
             <div className="relative flex-1">
               <Link2
-                className={`pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 ${
-                  dark ? "text-slate-500" : "text-slate-400"
+                className={`pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 ${
+                  dark ? "text-neutral-500" : "text-slate-400"
                 }`}
               />
               <input
@@ -109,11 +114,11 @@ export function HeroInput({
                 required
                 value={url}
                 onChange={(e) => onUrlChange(e.target.value)}
-                placeholder="Paste YouTube lecture URL (e.g. https://www.youtube.com/watch?v=...)"
-                className={`w-full rounded-xl border py-3 pl-10 pr-4 text-sm outline-none transition-all ${
+                placeholder="Paste YouTube URL (e.g. https://www.youtube.com/watch?v=...)"
+                className={`w-full rounded-2xl border py-3 pl-11 pr-4 text-sm outline-none transition-all ${
                   dark
-                    ? "border-slate-700 bg-slate-950 text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25"
-                    : "border-slate-300 bg-slate-50 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20"
+                    ? "border-white/15 bg-black/30 text-white placeholder-neutral-500 focus:border-[#0A84FF] focus:ring-4 focus:ring-[#0A84FF]/20"
+                    : "border-black/10 bg-white/75 text-slate-900 placeholder-slate-400 shadow-inner focus:border-[#007AFF] focus:bg-white focus:ring-4 focus:ring-[#007AFF]/15"
                 }`}
               />
             </div>
@@ -123,10 +128,10 @@ export function HeroInput({
                 type="button"
                 disabled={!url.trim() || inspecting || extracting}
                 onClick={() => onInspect()}
-                className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
+                className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-45 ${
                   dark
-                    ? "border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"
-                    : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                    ? "bg-white/10 text-white ring-1 ring-white/15 hover:bg-white/15"
+                    : "bg-white/80 text-slate-800 ring-1 ring-black/10 shadow-sm hover:bg-white"
                 }`}
               >
                 {inspecting ? (
@@ -140,7 +145,7 @@ export function HeroInput({
               <button
                 type="submit"
                 disabled={!url.trim() || extracting}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition-all hover:from-indigo-500 hover:to-violet-500 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#007AFF] px-5 py-3 text-sm font-semibold text-white shadow-md shadow-[#007AFF]/25 transition-all hover:bg-[#0070EB] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45 sm:flex-none"
               >
                 {extracting ? (
                   <>
@@ -157,9 +162,9 @@ export function HeroInput({
             </div>
           </form>
 
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className={`text-xs font-medium ${dark ? "text-slate-500" : "text-slate-500"}`}>
-              Try sample lecture:
+          <div className="mt-3.5 flex flex-wrap items-center gap-2">
+            <span className={`text-xs font-medium ${dark ? "text-neutral-500" : "text-slate-500"}`}>
+              Sample lectures:
             </span>
             {SAMPLE_LECTURES.map((sample) => (
               <button
@@ -169,10 +174,10 @@ export function HeroInput({
                   onUrlChange(sample.url);
                   onInspect(sample.url);
                 }}
-                className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                   dark
-                    ? "bg-slate-800/80 text-slate-300 hover:bg-indigo-500/20 hover:text-indigo-300"
-                    : "bg-slate-100 text-slate-600 hover:bg-indigo-50 hover:text-indigo-700"
+                    ? "bg-white/[0.08] text-neutral-300 hover:bg-white/15"
+                    : "bg-black/[0.04] text-slate-700 hover:bg-[#007AFF]/10 hover:text-[#007AFF]"
                 }`}
               >
                 {sample.label}
@@ -194,12 +199,12 @@ export function HeroInput({
             if (f) onUploadFile(f);
           }}
           onClick={() => fileRef.current?.click()}
-          className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition-all ${
+          className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition-all ${
             dragOver
-              ? "border-indigo-500 bg-indigo-500/10"
+              ? "border-[#007AFF] bg-[#007AFF]/10"
               : dark
-                ? "border-slate-700 bg-slate-950/50 hover:border-indigo-500/60"
-                : "border-slate-300 bg-slate-50 hover:border-indigo-400"
+                ? "border-white/15 bg-black/20 hover:border-white/30"
+                : "border-black/15 bg-white/45 hover:border-[#007AFF]/50"
           }`}
         >
           <input
@@ -212,12 +217,16 @@ export function HeroInput({
               if (f) onUploadFile(f);
             }}
           />
-          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-500/15 text-indigo-400">
+          <div
+            className={`mb-3 flex h-12 w-12 items-center justify-center rounded-2xl ${
+              dark ? "bg-white/10 text-[#0A84FF]" : "bg-[#007AFF]/10 text-[#007AFF]"
+            }`}
+          >
             <Film className="h-6 w-6" />
           </div>
-          <p className="text-sm font-semibold">Drop a recorded lecture video here or click to browse</p>
-          <p className={`mt-1 text-xs ${dark ? "text-slate-400" : "text-slate-500"}`}>
-            Supports MP4, MKV, WebM, MOV — processed 100% locally on your machine
+          <p className="text-sm font-semibold">Drop a recorded lecture video or click to browse</p>
+          <p className={`mt-1 text-xs ${dark ? "text-neutral-400" : "text-slate-500"}`}>
+            MP4, MKV, WebM, or MOV — processed directly on your computer
           </p>
         </div>
       )}
